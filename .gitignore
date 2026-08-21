@@ -48,3 +48,6 @@ $RECYCLE.BIN/
 *.pem
 credentials.json
 secrets.*
+
+# Vendor / reference trees (clone locally; not committed)
+RGB-Matrix-Px-xx/

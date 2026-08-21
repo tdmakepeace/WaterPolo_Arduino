@@ -78,6 +78,7 @@ If regenerating documentation images, place under `docs/`:
 
 - `docs/button_box_panel.png` — operator panel layout
 - `docs/rgb_matrix_mega_wiring.png` — HUB75 → Mega wiring
+- `docs/matrix_layout_play.png` — RGB matrix play-mode layout example
 
 If images already exist, **reuse them** and reference them from README/USAGE. Do not delete them.
 
@@ -315,21 +316,22 @@ IN 1:30
 **Matrix play:**
 
 ```text
-HOME           AWAY
- 03             02
-5:42  e1 e2    28
+03      P1      02
+      5:42
+28     e1 e2
 ```
 
-Colors (Color333):
+Timeout / interval / half-time: top centre becomes `TO` / `IN` / `HT`; large middle clock shows the break time. On **TO**, frozen period clock is copied bottom-right next to the shot.
 
-- Home green `(0,7,0)`, Away orange `(7,2,0)`
-- Period white when running, dim when paused, red flash at 0:00
-- Shot yellow when running, red at ≤5 s, dim when paused
-- Exclusions magenta; only while &gt; 0
-- Small running indicator pixel(s) near period time when running
-- TO cyan-ish / IN blue-ish on bottom row replacing period+shot
+Colors (Color333 / bitbang equivalents):
 
-Always `matrix.fillScreen(0)` then draw, then `matrix.swapBuffers(false)`.
+- Home white, Away blue (scores only — no H/A labels)
+- Labels (`P#` / `TO` / `IN` / `HT`) orange
+- Main clock: white &gt;1:00, orange ≤1:00 down to 0:29, red ≤0:28 (blink at 0:00)
+- Shot always red
+- Exclusions magenta; only while &gt; 0 (play mode)
+
+Always clear then draw (bitbang `clear` / Adafruit `fillScreen(0)` + `swapBuffers` when double-buffered).
 
 ---
 

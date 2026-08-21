@@ -37,15 +37,15 @@ const Net NETS[] = {
   {"R2",  "Green",  27, false},
   {"G2",  "Blue",   28, false},
   {"B2",  "Violet", 29, false},
-  {"GND", "Grey",   255, true},
+  {"E",   "Grey",   A4, false},  // pin 8 = E on this Waveshare (hold LOW in matrix sketches)
   {"A",   "White",  A0, false},
   {"B",   "Black",  A1, false},
   {"C",   "Brown",  A2, false},  // 2nd brown (#11)
   {"D",   "Red",    A3, false},  // 2nd red (#12)
-  {"CLK", "Orange", 11, false},  // 2nd orange (#13)
-  {"LAT", "Yellow", 10, false},  // 2nd yellow (#14)
-  {"OE",  "Green",  9,  false},  // 2nd green (#15)
-  {"GND", "Blue",   255, true},  // 2nd blue (#16)
+  {"CLK", "Orange", 11, false},  // #13
+  {"OE",  "Yellow", 10, false},  // #14 yellow → OE → D10
+  {"LAT", "Green",  9,  false},  // #15 green → LAT → D9
+  {"GND", "Blue",   255, true},  // #16
 };
 
 const uint8_t NET_COUNT = sizeof(NETS) / sizeof(NETS[0]);
