@@ -10,6 +10,18 @@ Print guide overview:
 
 Vector (1:1 mm): [`button_box_panel_dimensions.svg`](button_box_panel_dimensions.svg)
 
+## Layout (below LCD)
+
+Three rows of four buttons (left → right):
+
+| Row | Buttons |
+|-----|---------|
+| 1 | Game Clock **+1s** · Game Clock **−1s** · Shot Clock **+1s** · Shot Clock **−1s** |
+| 2 | **TIMEOUT** · **INTERVAL** · **FORCE 18** · **RETURN** |
+| 3 | **28s RESET** · **18s RESET** · **EXCLUSION** · **START/STOP** |
+
+HOME / AWAY score buttons and the Freenove LCD stay in the top band.
+
 ## 3D print files
 
 | File | Format | Notes |
@@ -29,11 +41,12 @@ Print flat on the bed, **3 mm** thick, no supports. Ream button holes to Ø16.2 
 
 | Item | Spec |
 |------|------|
-| Momentary buttons | **Ø16 mm** panel-mount (17 pcs) |
+| Momentary buttons | **Ø16 mm** panel-mount (**16** pcs) |
 | Button panel holes | **Ø16.2 mm** (0.2 mm clearance) |
 | Display | **Freenove I2C IIC LCD 1602** (FNK0079) |
 | Faceplate outer | **250 × 180 mm**, corner R **8** |
 | Suggested thickness | **3 mm** (PLA/PETG); leave ≥18 mm depth behind for LCD + I2C backpack |
+| Grid pitch | **50 mm** (X) × **30 mm** (Y) |
 | Coordinate origin | Outer **top-left** corner of panel |
 
 ## Freenove LCD 1602 cutout
@@ -60,19 +73,18 @@ Classic I2C 1602 module (Freenove FNK0079 class):
 | - HOME | 35.0 | 62.0 | Ø16.2 |
 | + AWAY | 215.0 | 36.0 | Ø16.2 |
 | - AWAY | 215.0 | 62.0 | Ø16.2 |
-| GAME +1s | 85.0 | 95.0 | Ø16.2 |
-| GAME -1s | 120.0 | 95.0 | Ø16.2 |
-| SHOT +1s | 150.0 | 95.0 | Ø16.2 |
-| SHOT -1s | 185.0 | 95.0 | Ø16.2 |
-| TIMEOUT 1:00 | 55.0 | 125.0 | Ø16.2 |
-| INTERVAL 2:00 | 150.0 | 125.0 | Ø16.2 |
-| RETURN | 185.0 | 125.0 | Ø16.2 |
-| 28s RESET | 40.0 | 155.0 | Ø16.2 |
-| 18s RESET | 72.0 | 155.0 | Ø16.2 |
-| EXCL 1 | 104.0 | 155.0 | Ø16.2 |
-| EXCL 2 | 136.0 | 155.0 | Ø16.2 |
-| FORCE 18 | 168.0 | 155.0 | Ø16.2 |
-| START/STOP | 215.0 | 155.0 | Ø16.2 |
+| GAME +1s | 55.0 | 95.0 | Ø16.2 |
+| GAME -1s | 105.0 | 95.0 | Ø16.2 |
+| SHOT +1s | 155.0 | 95.0 | Ø16.2 |
+| SHOT -1s | 205.0 | 95.0 | Ø16.2 |
+| TIMEOUT | 55.0 | 125.0 | Ø16.2 |
+| INTERVAL | 105.0 | 125.0 | Ø16.2 |
+| FORCE 18 | 155.0 | 125.0 | Ø16.2 |
+| RETURN | 205.0 | 125.0 | Ø16.2 |
+| 28s RESET | 55.0 | 155.0 | Ø16.2 |
+| 18s RESET | 105.0 | 155.0 | Ø16.2 |
+| EXCLUSION | 155.0 | 155.0 | Ø16.2 |
+| START/STOP | 205.0 | 155.0 | Ø16.2 |
 | LCD mount 1 | 87.5 | 32.5 | Ø3.2 |
 | LCD mount 2 | 162.5 | 32.5 | Ø3.2 |
 | LCD mount 3 | 87.5 | 63.5 | Ø3.2 |
@@ -88,10 +100,8 @@ Classic I2C 1602 module (Freenove FNK0079 class):
 |------|------:|
 | HOME + to − (vertical) | 26 mm |
 | AWAY + to − (vertical) | 26 mm |
-| GAME +1s to −1s | 35 mm |
-| SHOT +1s to −1s | 35 mm |
-| Bottom-row buttons | 32 mm |
-| INTERVAL to RETURN | 35 mm |
+| Grid columns (adjacent) | 50 mm |
+| Grid rows (adjacent) | 30 mm |
 
 ## 3D-print notes
 

@@ -40,7 +40,7 @@ Operator scoreboard for water polo: **period clock**, **home/away scores**, and 
 | Timeout 1:00         | **D7**  | Pause period + shot; run independent 1:00 timeout                                                                       |
 | Interval 2:00        | **D8**  | Advance period (P1→P4); load match period length + shot→28; keep remaining exclusions; run **IN** or **HT**             |
 | Relay (horn / alarm) | **D12** | Pulses when shot expires (~0.5 s) or period hits 0 (~1 s)                                                               |
-| Return               | **D35** | End **TO/IN/HT** early → period+shot (**keeps shot value** after timeout)                                               |
+| Return               | **D35** | End **TO/IN/HT** early → period+shot (**keeps shot value** after timeout); also **exits timing menu**                    |
 | Period +1 s          | **D36** | Short +1 s · long press **+10 s** (max 8:00)                                                                            |
 | Period −1 s          | **D37** | Short −1 s · long press **−30 s** (min 0:00)                                                                            |
 | Shot +1 s            | **D38** | Short +1 s · long press **+10 s** (max 28)                                                                              |
@@ -51,23 +51,34 @@ Operator scoreboard for water polo: **period clock**, **home/away scores**, and 
 | Away −               | **D43** | Decrease away                                                                                                           |
 
 
-- **D2** short press → start/stop immediately (play mode only)  
-- Hold **D2** ~5 s (from stopped) → reset period clock to the **current match length** (default **8:00**)  
-- Hold **D2 + D6** together for **5 s** → **full reset** (scores 0–0, period **P1** 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped)  
-- Shot clock counts **only** while the period clock is running in **play** mode  
+- **D2** short press → start/stop immediately (play mode only; behaviour depends on **CLOCK** STOP/RUN)  
+- Hold **D2** ~5 s → STOP mode (from stopped): reload period to match length · RUN mode: stop the period  
+- Hold **D2 + D35** ~**2 s** → reload period to match length; **keep** shot + exclusions  
+- Hold **D2 + D6** together for **5 s** → **full reset** (scores 0–0, period **P1** 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped; timing values + **CLOCK** back to defaults)
+- Hold **D5 + D6** ~**2 s** → **timing menu** (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK; **D36**/**D37** ±30 s or CLOCK toggle, **S/S** next/confirm, **D35** exit)  
+- Operator detail: [timing menu](docs/user_guide_timing_menu.md) · [STOP mode](docs/user_guide_stop_mode.md) · [RUN mode](docs/user_guide_run_mode.md)  
+- Shot clock counts while **play** is active (in STOP mode that matches the period; in RUN mode period may keep running alone)  
 - If period remaining is **less than** the shot clock, the shot shows the period seconds (matrix / LCD / LoRa)  
 - Value adjust buttons do **not** start/stop the clocks  
-- Shot value is sent to LoRa remotes on every change, and **re-broadcast every 0.5 s while the clock is running**  
-- **Period length:** default `PERIOD_SECONDS` (**8:00**). If you change the period clock **before the first START** of that period, the new value becomes the match length and is reloaded by **INTERVAL** / D2 long-press for later periods (e.g. trim to **6:30** before kickoff → every period starts at 6:30). Adjustments **after** START only fix the live clock and do not change later periods.  
+- Shot value is sent to LoRa remotes on every change, and **re-broadcast every 0.5 s while play is running**  
+- **Period length:** default `PERIOD_SECONDS` (**8:00**). If you change the period clock **before the first START** of that period, the new value becomes the match length and is reloaded by **INTERVAL** / period-reload for later periods (e.g. trim to **6:30** before kickoff → every period starts at 6:30). Adjustments **after** START only fix the live clock and do not change later periods.  
 - **Timeout:** period and shot freeze; when TO ends (or **D35 Return**), display returns to period+shot with **same shot value**; resume with **D2**  
 - **Interval:** advances the period counter (max **P4**); loads the match period length / shot **28**; **remaining exclusion time is kept** (paused during the break, resumes next period); after **P2** uses half-time (`HALF_TIME_SECONDS`, currently **2:00**, label **HT**), otherwise `INTERVAL_SECONDS` (**2:00**, label **IN**); when the break ends (or **D35 Return**), display returns to period+shot; start play with **D2**. Also starts automatically when the period clock reaches **0:00** in **P1–P3** (not after **P4**).  
-- **Exclusions:** one button (**D4**) starts clock 1 then clock 2; each slot starts only from idle (0) and cannot be restarted until it reaches 0; pause during timeout/interval and when period clock is stopped; remaining time is **carried into the next period** across IN/HT; a **goal** (home+ / away+) or **D6** (shot → 28) clears both clocks
+- **Exclusions:** one button (**D4**) starts clock 1 then clock 2; each slot starts only from idle (0) and cannot be restarted until it reaches 0; pause during timeout/interval and when play is stopped; remaining time is **carried into the next period** across IN/HT; a **goal** (home+ / away+) or **D6** (shot → 28) clears both clocks
 
 ---
 
 ## How to use
 
-This is the operator guide for the control panel (button box + LCD). You do not need to know the wiring or pin map to run a game — use the labels on the panel and the steps below.
+This is the operator overview for the control panel (button box + LCD). Full button-by-button detail lives in the mode guides below — use those when training operators or when **CLOCK** is set to **RUN**.
+
+**Detailed operator guides:**
+
+| Guide | Contents |
+|-------|----------|
+| [Timing menu](docs/user_guide_timing_menu.md) | Open/leave menu; PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK |
+| [STOP mode (Start/Stop)](docs/user_guide_stop_mode.md) | Every button when **CLOCK = STOP** (default) |
+| [RUN mode](docs/user_guide_run_mode.md) | Every button when **CLOCK = RUN** (running period clock) |
 
 Panel layout reference:
 
@@ -81,24 +92,37 @@ Faceplate drill / 3D-print sizes (Ø16 mm buttons + Freenove 1602): `[docs/butto
 | Display         | What it shows                                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------------------------ |
 | LCD top line    | Play: period time + `P#` + scores (`Hnn-nnA`). TO/IN/HT: break time + scores (no period)                     |
-| LCD bottom line | Shot (`Snn`), run `*`, exclusions `E-tt, tt`, command-ack `*` bottom-right                                   |
+| LCD bottom line | Shot (`Snn`), run `*` (play active), exclusions `E-tt, tt`, command-ack `*` bottom-right                    |
 | RGB matrix      | Scores either side of `P#` (or `TO`/`IN`/`HT`), large centre clock, shot bottom-left, exclusions when active |
 
 
-Defaults at power-up / full reset: scores **0–0**, period **P1** **8:00**, shot **28**, clocks **stopped**.
+Defaults at power-up / full reset: scores **0–0**, period **P1** **8:00**, shot **28**, clocks **stopped**, **CLOCK = STOP**.
 
-### Start / stop the period (START/STOP)
+### Clock modes (STOP vs RUN)
+
+Set on the timing-menu **CLOCK** page (see [timing menu guide](docs/user_guide_timing_menu.md)):
+
+| Mode | Short **START/STOP** | Long **START/STOP** (~5 s) | Goal / EXCL / FORCE 18 / shot = 0 |
+|------|----------------------|----------------------------|-----------------------------------|
+| **STOP** (default) | Toggle period + shot + exclusions together | From stopped: reload period to match length | Stops period + play |
+| **RUN** | First start of quarter (or after timeout): start period + play. Later: toggle play only | Stops the period (+ play) | Period **keeps running**; play stops |
+
+Hold **START/STOP** + **RETURN** ~**2 s** (either mode): reload period to match length; **keep** shot and exclusions; clocks stop.
+
+### Start / stop (START/STOP) — STOP mode summary
 
 
 | Action                                  | Result                                                                          |
 | --------------------------------------- | ------------------------------------------------------------------------------- |
-| Short press **START/STOP**              | Toggle period clock on/off (play mode only)                                     |
-| While period runs                       | Shot clock also counts down                                                     |
-| While period is stopped                 | Shot clock is frozen                                                            |
-| Hold **START/STOP** ~5 s (from stopped) | Reset period clock to match length (default **8:00**; does not start the clock) |
+| Short press **START/STOP**              | Toggle period + shot + exclusions (play mode only)                              |
+| While play runs                         | Period, shot, and exclusions count down                                         |
+| While play is stopped                   | Period, shot, and exclusions are frozen                                         |
+| Hold **START/STOP** ~5 s (from stopped) | Reset period clock to match length (does not start the clock)                   |
 
 
 **START/STOP** does nothing during a timeout or interval / half-time — use **RETURN** first (or wait for the timer to finish).
+
+For **RUN** mode behaviour, see [docs/user_guide_run_mode.md](docs/user_guide_run_mode.md).
 
 ### Periods (P1–P4)
 
@@ -113,65 +137,92 @@ The board tracks the current period. Press **INTERVAL** at the end of a period t
 | Already **P4**  | **IN**      | stays on **P4**; same interval duration                                             |
 
 
-Full reset returns to **P1** and restores match length to **8:00**. Long-press **START/STOP** reloads the period clock to the **current match length** — it does **not** change the period number.
+Full reset returns to **P1** and restores match length to **8:00**. Reloading the period clock (long-press **START/STOP** in STOP mode, or **START/STOP** + **RETURN**) does **not** change the period number.
 
 ### Scoring (HOME / AWAY)
 
 
-| Button                  | Result                                                                                         |
+| Button                  | Result (STOP mode)                                                                             |
 | ----------------------- | ---------------------------------------------------------------------------------------------- |
-| **+ HOME** / **+ AWAY** | Score +1 (max 99); **stops** the period clock; shot → **28**; **clears both exclusion clocks** |
+| **+ HOME** / **+ AWAY** | Score +1 (max 99); **stops** period + play; shot → **28**; **clears both exclusion clocks**   |
 | **− HOME** / **− AWAY** | Score −1 (min 0); clocks and shot are unchanged                                                |
 
 
-After a goal, press **START/STOP** when play resumes.
+In **RUN** mode a goal still resets the shot and clears exclusions, but the **period keeps running**; only play stops. Resume with **START/STOP**.
 
 ### Shot clock
 
 
-| Button             | Result                                                                            |
+| Button             | Result (STOP mode)                                                                |
 | ------------------ | --------------------------------------------------------------------------------- |
-| **28s RESET**      | Shot → **28**; period clock stays as it was; **clears both exclusion clocks**     |
-| **18s RESET**      | Shot → **18** only if current value is **< 18**; period clock stays as it was     |
-| **FORCE 18**       | Shot → **18** always (ignores the < 18 rule); **pauses** period clock             |
-| Shot reaches **0** | Horn/relay (~0.5 s); remote buzzers; **both clocks stop**; shot reloads to **28** |
+| **28s RESET**      | Shot → **28**; run state unchanged; **clears both exclusion clocks**              |
+| **18s RESET**      | Shot → **18** only if current value is **< 18**; run state unchanged              |
+| **FORCE 18**       | Shot → **18** always; **stops** period + play                                     |
+| Shot reaches **0** | Horn/relay (~0.5 s); remote buzzers; **clocks stop**; shot reloads to **28**      |
 
 
-When **period remaining** is less than the shot clock (including a short `PERIOD_SECONDS` / match length), the shot clock **shows the period seconds** on the matrix, LCD, and LoRa remotes. Period end takes precedence over shot expiry if both hit **0** together.
+In **RUN** mode, **FORCE 18** and shot expiry stop **play** only — the period keeps running.
 
-Shot value is also shown on LoRa remote shot clocks and updated while the clock is running.
+When **period remaining** is less than the shot clock, the shot shows the period seconds on the matrix, LCD, and LoRa remotes. Period end takes precedence over shot expiry if both hit **0** together.
 
 ### Timeouts and intervals
 
 
 | Button                    | Result                                                                     |
 | ------------------------- | -------------------------------------------------------------------------- |
-| **TIMEOUT 1:00**          | Pause period + shot; run a separate **1:00** countdown (`TO` on displays)  |
-| **INTERVAL 2:00**         | Advance period; load match length / **28**; keep remaining exclusions; run **IN** or **HT** |
-| **RETURN**                | End TO/IN/HT early and go back to the period + shot display                |
+| **TIMEOUT**               | Pause period + play; run independent timeout (`TO`; length from menu)      |
+| **INTERVAL**              | Advance period; load match length / **28**; keep exclusions; run **IN** or **HT** |
+| **RETURN** short          | End TO/IN/HT early (silent) → period + shot display                        |
+| **RETURN** hold ~**3 s**  | During TO/IN/HT: end break **and** buzz. In play: buzz only                |
 | TO or IN/HT reaches **0** | Short horn/relay; display returns to period + shot automatically           |
 
 
 After timeout: shot value is **kept**; press **START/STOP** to resume.  
-After interval / half-time: you have a fresh period at the **match length** / shot **28**; remaining exclusion time is **kept**; press **START/STOP** to start play.
+After interval / half-time: fresh period at match length / shot **28**; exclusions kept; press **START/STOP** to start play.
 
 ### Exclusions (EXCL)
 
 
-| Button                  | Result                                                                                                       |
+| Button                  | Result (STOP mode)                                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **EXCL** (first press)  | Start exclusion **clock 1** (**18 s**); **pauses** the period clock; applies **18s RESET** rule if shot < 18 |
+| **EXCL** (first press)  | Start exclusion **clock 1** (**18 s**); **stops** play; applies **18s RESET** rule if shot < 18              |
 | **EXCL** (second press) | Start exclusion **clock 2** (same rules) while clock 1 is still running                                      |
 
+
+In **RUN** mode exclusions still stop **play**, but the **period keeps running**.
 
 Notes:
 
 - Each slot starts only when it is **0** (idle). You cannot restart an active clock until it counts down to 0. If both are running, further presses do nothing.
 - If clock 1 has expired and clock 2 is still running, the next press re-arms clock 1.
-- Exclusion timers tick only while the period clock is running; they pause during timeout/interval and when the period is stopped.
-- Remaining exclusion time is **carried into the next period** across **IN**/**HT** (auto at 0:00 or **INTERVAL**). It stays frozen during the break and resumes when play starts.
-- A **goal** (**+ HOME** / **+ AWAY**) or **28s RESET** (**D6**) clears **both** exclusion clocks.
+- Exclusion timers tick only while **play** is running; they pause during timeout/interval and when play is stopped.
+- Remaining exclusion time is **carried into the next period** across **IN**/**HT** (auto at 0:00 or **INTERVAL**).
+- A **goal** (**+ HOME** / **+ AWAY**) or **28s RESET** clears **both** exclusion clocks.
 - Press **START/STOP** to resume play (and continue the exclusion countdown).
+
+### Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)
+
+Hold **18s RESET** and **28s RESET** for ~**2 s**. Clocks freeze while the menu is open. Values are kept until a **full reset** (not stored in EEPROM).
+
+Full detail: [docs/user_guide_timing_menu.md](docs/user_guide_timing_menu.md)
+
+| Order | Item | Default | Range |
+|-------|------|---------|-------|
+| 1/5 | **PERIOD** | 8:00 | 0:30–15:00 (±30 s) |
+| 2/5 | **INTERVAL** | 2:00 | 0:00–3:00 (±30 s) |
+| 3/5 | **HALFTIME** | 2:00 | 0:00–7:00 (±30 s) |
+| 4/5 | **TIMEOUT** | 1:00 | 0:30–5:00 (±30 s) |
+| 5/5 | **CLOCK** | **STOP** | **STOP** or **RUN** (toggle) |
+
+| Button | In menu |
+|--------|---------|
+| Game **+1s** / **−1s** | Current time **±30 s**, or toggle **CLOCK** STOP ↔ RUN |
+| **START/STOP** (LCD shows **S/S**) | Next item; on **CLOCK** confirm and **exit** |
+| **RETURN** | Exit immediately (keeps changes already made) |
+
+LCD: `SET PERIOD  1/5` / `8:00  S/S next`. Last page shows `S/S OK`. Other buttons are ignored until you leave the menu.
+
+If the current period has not been started yet, changing **PERIOD** also updates the live period clock.
 
 ### Fine adjust (GAME CLOCK / SHOT CLOCK ±1s)
 
@@ -185,48 +236,55 @@ Use these to correct time without starting or stopping play yourself (they do no
 | Shot **+1s** / **−1s** | Shot ±1 s   | Shot ±10 s          |
 
 
-Limits: period **0:00–8:00**, shot **0–28**. Period adjust only works in play mode (not during TO/IN). If you adjust period to **0:00**, the clock stops.
+Limits: period **0:00–15:00** (live ±1 s; match length comes from the timing menu / pre-START trim), shot **0–28**. Period adjust only works in play mode (not during TO/IN). If you adjust period to **0:00**, the clocks stop.
 
-If you change the period clock **before the first START** of the current period, that value becomes the **match length** used for later periods (INTERVAL / long-press START reload). Example: trim **8:00 → 6:30** before kickoff, then every period starts at **6:30**. Mid-period corrections after START do not change the match length.
+If you change the period clock **before the first START** of the current period, that value becomes the **match length** used for later periods.
 
 ### Full game reset
 
-Hold **START/STOP** and **28s RESET** (**D2 + D6**) together for **~5 s**:
+Hold **START/STOP** and **28s RESET** together for **~5 s**:
 
 - Scores → **0–0**
 - Period → **P1** **8:00**, shot → **28**
-- Clears timeout / interval / half-time / exclusions
+- Timing lengths → defaults (period **8:00**, interval **2:00**, half-time **2:00**, timeout **1:00**)
+- **CLOCK** → **STOP**
+- Clears timeout / interval / half-time / exclusions / timing menu
 - Clocks stopped
 
-### Typical period workflow
+### Typical period workflow (STOP mode)
 
-1. Confirm scores and clocks (or do a full reset).
+1. Confirm scores and clocks (or do a full reset). Optionally set **CLOCK** in the timing menu.
 2. Press **START/STOP** to begin the period.
 3. On a shot-clock reset foul / new possession → **28s RESET** (or **18s RESET** / **FORCE 18** as required).
 4. On a goal → **+ HOME** or **+ AWAY** (clock stops, shot → 28, exclusions clear); resume with **START/STOP**.
 5. On exclusion → **EXCL** (first press clock 1, second press clock 2), then **START/STOP** when play resumes.
-6. Team timeout → **TIMEOUT 1:00**; when done (or **RETURN**), **START/STOP** to resume.
-7. Between periods → **INTERVAL 2:00** (after **P2** this is **HT**); when done, **START/STOP** for the next period.
+6. Team timeout → **TIMEOUT**; when done (or **RETURN**), **START/STOP** to resume.
+7. Between periods → **INTERVAL** (after **P2** this is **HT**); when done, **START/STOP** for the next period.
 8. If the period hits **0:00**, the horn sounds (~1 s) and remotes get `END`. **P1–P3** then auto-start the **IN**/**HT** break (same as **INTERVAL**); **P4** stays at **0:00**.
+
+For the **RUN** mode workflow, see [docs/user_guide_run_mode.md](docs/user_guide_run_mode.md).
 
 ### Button quick reference
 
 
 | Panel label             | Function                                                         |
 | ----------------------- | ---------------------------------------------------------------- |
-| **START/STOP**          | Start/stop period (and shot) in play                             |
-| **+ HOME** / **− HOME** | Home score ±1 (+ also stops clock, shot → 28, clears exclusions) |
-| **+ AWAY** / **− AWAY** | Away score ±1 (+ also stops clock, shot → 28, clears exclusions) |
-| **28s RESET**           | Shot → 28; clears exclusions                                 |
+| **START/STOP**          | Start/stop (STOP: all clocks; RUN: see mode guide)               |
+| **+ HOME** / **− HOME** | Home score ±1 (+ also stops play, shot → 28, clears exclusions)  |
+| **+ AWAY** / **− AWAY** | Away score ±1 (+ also stops play, shot → 28, clears exclusions)  |
+| **28s RESET**           | Shot → 28; clears exclusions                                     |
 | **18s RESET**           | Shot → 18 if < 18                                                |
-| **FORCE 18**            | Shot → 18 always; pauses period clock                            |
-| **TIMEOUT 1:00**        | 1-minute timeout                                                 |
-| **INTERVAL 2:00**       | Next period + IN/HT break (fresh match length / 28; exclusions kept) |
-| **RETURN**              | Leave timeout / interval / half-time early                       |
+| **FORCE 18**            | Shot → 18 always; stops play (period too in STOP mode)           |
+| **TIMEOUT**             | Team timeout (length from menu)                                  |
+| **INTERVAL**            | Next period + IN/HT break (fresh match length / 28; exclusions kept) |
+| **RETURN**              | Leave TO/IN/HT / menu; long ≈ buzz; with S/S ≈ period reload     |
 | **EXCL**                | 18 s exclusion timers (press 1 → clock 1, press 2 → clock 2)     |
-| Game **+1s**            | Period +1 s (hold **+10 s**)                                     |
-| Game **−1s**            | Period −1 s (hold **−30 s**)                                     |
+| Game **+1s**            | Period +1 s (hold **+10 s**); in timing menu **+30 s** / CLOCK toggle |
+| Game **−1s**            | Period −1 s (hold **−30 s**); in timing menu **−30 s** / CLOCK toggle |
 | Shot **±1s**            | Shot ±1 s (hold ±10 s)                                           |
+| Hold **18s + 28s**      | Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)     |
+| Hold **S/S + 28s** ~5 s | Full game reset                                                  |
+| Hold **S/S + RETURN** ~2 s | Reload period length; keep shot + exclusions                  |
 
 
 ---
@@ -358,12 +416,10 @@ Operator control panel button layout
 | ---------------- | ---------------------------------------------------- | ------------------------------------------ |
 | Top left         | Home + / −                                           | **D40** / **D41**                          |
 | Top right        | Away + / −                                           | **D42** / **D43**                          |
-| Mid left of LCD  | Timeout 1:00                                         | **D7**                                     |
 | Center           | I2C LCD 16×2                                         | **SDA D20** / **SCL D21**                  |
-| Mid right of LCD | Interval 2:00 · **Return**                           | **D8** · **D35**                           |
-| Under LCD left   | Period +1 s / −1 s                                   | **D36** / **D37**                          |
-| Under LCD right  | Shot +1 s / −1 s                                     | **D38** / **D39**                          |
-| Bottom row L→R   | Shot → 28 · Shot → 18 · Excl · Force 18 · Start/Stop | **D6** · **D5** · **D4** · **D3** · **D2** |
+| Row 1 (under LCD) | Game +1s · Game −1s · Shot +1s · Shot −1s           | **D36** · **D37** · **D38** · **D39**      |
+| Row 2             | Timeout · Interval · Force 18 · Return              | **D7** · **D8** · **D3** · **D35**         |
+| Row 3             | 28s Reset · 18s Reset · Exclusion · Start/Stop      | **D6** · **D5** · **D4** · **D2**          |
 
 
 ### RGB matrix → Mega (HUB75)
