@@ -37,14 +37,14 @@ const Net NETS[] = {
   {"R2",  "Green",  27, false},
   {"G2",  "Blue",   28, false},
   {"B2",  "Violet", 29, false},
-  {"E",   "Grey",   A4, false},  // pin 8 = E on this Waveshare (hold LOW in matrix sketches)
+  {"GND", "Grey",   255, true}, // pin 8 = GND on this 64x32 Waveshare
   {"A",   "White",  A0, false},
   {"B",   "Black",  A1, false},
   {"C",   "Brown",  A2, false},  // 2nd brown (#11)
   {"D",   "Red",    A3, false},  // 2nd red (#12)
   {"CLK", "Orange", 11, false},  // #13
-  {"OE",  "Yellow", 10, false},  // #14 yellow → OE → D10
-  {"LAT", "Green",  9,  false},  // #15 green → LAT → D9
+  {"LAT", "Yellow", 9,  false},  // #14 yellow → LAT → D9
+  {"OE",  "Green",  10, false},  // #15 green → OE → D10
   {"GND", "Blue",   255, true},  // #16
 };
 

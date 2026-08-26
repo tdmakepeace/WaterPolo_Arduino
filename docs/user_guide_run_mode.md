@@ -20,7 +20,7 @@ Also summarised in the main [README — How to use](../README.md#how-to-use).
 | **Period running** | Main game clock is counting down. |
 | **Play running** | Shot + exclusions are counting (LCD `*` on). |
 | After first start of a quarter | Short **START/STOP** only toggles **play**. Period keeps going. |
-| To stop the period | **Long-press START/STOP** (~5 s), or call **TIMEOUT** / **INTERVAL**, or wait for 0:00. |
+| To stop the period | **Long-press START/STOP** (~3 s), or call **TIMEOUT** / **INTERVAL**, or wait for 0:00. |
 
 Timeout still **stops the period**. After **RETURN** from timeout, press **START/STOP** to start period + play again.
 
@@ -28,7 +28,7 @@ Timeout still **stops the period**. After **RETURN** from timeout, press **START
 
 ## START/STOP
 
-| Situation | Short press | Hold ~5 s |
+| Situation | Short press | Hold ~3 s |
 |-----------|-------------|-----------|
 | Period **not** running (new quarter, or after timeout) | Starts **period + play** together | — (no period to stop) |
 | Period running, **play running** | Stops **play** only (period keeps running) | Stops **period + play** |
@@ -40,7 +40,7 @@ Timeout still **stops the period**. After **RETURN** from timeout, press **START
 1. Short **START/STOP** → period and shot start.
 2. Goal / exclusion / shot expiry → play stops; **period keeps running**.
 3. Short **START/STOP** → shot (and exclusions) resume; period still running.
-4. To freeze the whole quarter early → hold **START/STOP** ~5 s.
+4. To freeze the whole quarter early → hold **START/STOP** ~3 s.
 
 ---
 
@@ -48,8 +48,8 @@ Timeout still **stops the period**. After **RETURN** from timeout, press **START
 
 | Hold | Time | Effect |
 |------|------|--------|
-| **START/STOP** + **28s RESET** | ~**5 s** | **Full reset** (same as STOP mode): scores, clocks, exclusions, timing defaults, **CLOCK → STOP**. |
-| **START/STOP** + **RETURN** | ~**2 s** | Reload period to match length; **keep** current shot and exclusion values; **stops** period + play. |
+| **START/STOP** + **28s RESET** | ~**3 s** | **Full reset** (same as STOP mode): scores, clocks, exclusions, timing defaults, **CLOCK → STOP**. |
+| **START/STOP** + **RETURN** | ~**3 s** | Reload period to match length; **keep** current shot and exclusion values; **stops** period + play. |
 
 ---
 
@@ -127,7 +127,7 @@ Pre-first-START period edits still update match length for later quarters.
 
 | Hold | Time | Effect |
 |------|------|--------|
-| **18s RESET** + **28s RESET** | ~**2 s** | Open timing menu. Stops period + play. See [Timing menu guide](user_guide_timing_menu.md). |
+| **18s RESET** + **28s RESET** | ~**3 s** | Open timing menu. Stops period + play. See [Timing menu guide](user_guide_timing_menu.md). |
 
 ---
 
@@ -136,7 +136,7 @@ Pre-first-START period edits still update match length for later quarters.
 | Event | STOP mode | RUN mode |
 |-------|-----------|----------|
 | Short **START/STOP** | Toggle period + play | First start: both. Later: play only |
-| Long **START/STOP** (~5 s) | From stopped: reload period | Stop period (+ play) |
+| Long **START/STOP** (~3 s) | From stopped: reload period | Stop period (+ play) |
 | Goal / EXCL / FORCE 18 / shot = 0 | Stop period + play | Period keeps; play stops |
 | **TIMEOUT** | Stop period + play | Stop period + play |
 | **28s / 18s RESET** | Do not toggle run state | Same |
@@ -147,7 +147,7 @@ Pre-first-START period edits still update match length for later quarters.
 
 | Control | Short | Long / hold | Combo |
 |---------|-------|-------------|-------|
-| **START/STOP** | Start period+play, or toggle play only | ~5 s → stop period | +**28s** full reset; +**RETURN** period reload keep shot/excl |
+| **START/STOP** | Start period+play, or toggle play only | ~3 s → stop period | +**28s** full reset; +**RETURN** period reload keep shot/excl |
 | **+ HOME / + AWAY** | Goal; play stops; period keeps; shot 28; clear excl | — | — |
 | **− HOME / − AWAY** | Score −1 | — | — |
 | **28s RESET** | Shot 28; clear excl; run state kept | — | with **18s** → menu; with **S/S** → full reset |

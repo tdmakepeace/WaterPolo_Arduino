@@ -30,7 +30,7 @@ LCD `*` next to the shot value means play is running.
 | Press | Effect |
 |-------|--------|
 | **Short press** (play mode only) | Toggle period + shot + exclusions together. First start of a quarter marks the period as started. |
-| **Hold ~5 s** (clocks **stopped**) | Reload period clock to the current match length (`PERIOD`). May also pull the shot clock down if it is longer than the new period. Does **not** start the clocks. |
+| **Hold ~3 s** (clocks **stopped**) | Reload period clock to the current match length (`PERIOD`). May also pull the shot clock down if it is longer than the new period. Does **not** start the clocks. |
 | During **TIMEOUT** or **INTERVAL / HT** | No effect — use **RETURN** (or wait for the break to end). |
 
 ---
@@ -39,8 +39,8 @@ LCD `*` next to the shot value means play is running.
 
 | Hold | Time | Effect |
 |------|------|--------|
-| **START/STOP** + **28s RESET** | ~**5 s** | **Full reset**: scores 0–0, P1, period 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped, timing menu values → defaults, **CLOCK → STOP**. |
-| **START/STOP** + **RETURN** | ~**2 s** | Reload period to match length; **keep** current shot and exclusion values; clocks stop. |
+| **START/STOP** + **28s RESET** | ~**3 s** | **Full reset**: scores 0–0, P1, period 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped, timing menu values → defaults, **CLOCK → STOP**. |
+| **START/STOP** + **RETURN** | ~**3 s** | Reload period to match length; **keep** current shot and exclusion values; clocks stop. |
 
 ---
 
@@ -126,7 +126,7 @@ If you change the period clock **before the first START** of the current period,
 
 | Hold | Time | Effect |
 |------|------|--------|
-| **18s RESET** + **28s RESET** | ~**2 s** | Open timing menu (see [Timing menu guide](user_guide_timing_menu.md)). |
+| **18s RESET** + **28s RESET** | ~**3 s** | Open timing menu (see [Timing menu guide](user_guide_timing_menu.md)). |
 
 ---
 
@@ -134,7 +134,7 @@ If you change the period clock **before the first START** of the current period,
 
 | Control | Short | Long / hold | Combo |
 |---------|-------|-------------|-------|
-| **START/STOP** | Toggle all clocks | ~5 s from stopped → reload period | +**28s** ~5 s full reset; +**RETURN** ~2 s reload period keep shot/excl |
+| **START/STOP** | Toggle all clocks | ~3 s from stopped → reload period | +**28s** ~3 s full reset; +**RETURN** ~3 s reload period keep shot/excl |
 | **+ HOME / + AWAY** | Goal; stop all; shot 28; clear excl | — | — |
 | **− HOME / − AWAY** | Score −1 | — | — |
 | **28s RESET** | Shot 28; clear excl | — | with **18s** → menu; with **S/S** → full reset |

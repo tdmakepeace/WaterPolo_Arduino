@@ -52,10 +52,10 @@ Operator scoreboard for water polo: **period clock**, **home/away scores**, and 
 
 
 - **D2** short press → start/stop immediately (play mode only; behaviour depends on **CLOCK** STOP/RUN)  
-- Hold **D2** ~5 s → STOP mode (from stopped): reload period to match length · RUN mode: stop the period  
-- Hold **D2 + D35** ~**2 s** → reload period to match length; **keep** shot + exclusions  
-- Hold **D2 + D6** together for **5 s** → **full reset** (scores 0–0, period **P1** 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped; timing values + **CLOCK** back to defaults)
-- Hold **D5 + D6** ~**2 s** → **timing menu** (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK; **D36**/**D37** ±30 s or CLOCK toggle, **S/S** next/confirm, **D35** exit)  
+- Hold **D2** ~3 s → STOP mode (from stopped): reload period to match length · RUN mode: stop the period  
+- Hold **D2 + D35** ~**3 s** → reload period to match length; **keep** shot + exclusions  
+- Hold **D2 + D6** together for **3 s** → **full reset** (scores 0–0, period **P1** 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped; timing values + **CLOCK** back to defaults)
+- Hold **D5 + D6** ~**3 s** → **timing menu** (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK; **D36**/**D37** ±30 s or CLOCK toggle, **S/S** next/confirm, **D35** exit)  
 - Operator detail: [timing menu](docs/user_guide_timing_menu.md) · [STOP mode](docs/user_guide_stop_mode.md) · [RUN mode](docs/user_guide_run_mode.md)  
 - Shot clock counts while **play** is active (in STOP mode that matches the period; in RUN mode period may keep running alone)  
 - If period remaining is **less than** the shot clock, the shot shows the period seconds (matrix / LCD / LoRa)  
@@ -82,7 +82,7 @@ This is the operator overview for the control panel (button box + LCD). Full but
 
 Panel layout reference:
 
-Operator control panel button layout
+![Operator control panel button layout](docs/button_box_panel.png)
 
 Faceplate drill / 3D-print sizes (Ø16 mm buttons + Freenove 1602): `[docs/button_box_panel_measurements.md](docs/button_box_panel_measurements.md)`
 
@@ -102,12 +102,12 @@ Defaults at power-up / full reset: scores **0–0**, period **P1** **8:00**, sho
 
 Set on the timing-menu **CLOCK** page (see [timing menu guide](docs/user_guide_timing_menu.md)):
 
-| Mode | Short **START/STOP** | Long **START/STOP** (~5 s) | Goal / EXCL / FORCE 18 / shot = 0 |
+| Mode | Short **START/STOP** | Long **START/STOP** (~3 s) | Goal / EXCL / FORCE 18 / shot = 0 |
 |------|----------------------|----------------------------|-----------------------------------|
 | **STOP** (default) | Toggle period + shot + exclusions together | From stopped: reload period to match length | Stops period + play |
 | **RUN** | First start of quarter (or after timeout): start period + play. Later: toggle play only | Stops the period (+ play) | Period **keeps running**; play stops |
 
-Hold **START/STOP** + **RETURN** ~**2 s** (either mode): reload period to match length; **keep** shot and exclusions; clocks stop.
+Hold **START/STOP** + **RETURN** ~**3 s** (either mode): reload period to match length; **keep** shot and exclusions; clocks stop.
 
 ### Start / stop (START/STOP) — STOP mode summary
 
@@ -117,7 +117,7 @@ Hold **START/STOP** + **RETURN** ~**2 s** (either mode): reload period to match 
 | Short press **START/STOP**              | Toggle period + shot + exclusions (play mode only)                              |
 | While play runs                         | Period, shot, and exclusions count down                                         |
 | While play is stopped                   | Period, shot, and exclusions are frozen                                         |
-| Hold **START/STOP** ~5 s (from stopped) | Reset period clock to match length (does not start the clock)                   |
+| Hold **START/STOP** ~3 s (from stopped) | Reset period clock to match length (does not start the clock)                   |
 
 
 **START/STOP** does nothing during a timeout or interval / half-time — use **RETURN** first (or wait for the timer to finish).
@@ -202,7 +202,7 @@ Notes:
 
 ### Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)
 
-Hold **18s RESET** and **28s RESET** for ~**2 s**. Clocks freeze while the menu is open. Values are kept until a **full reset** (not stored in EEPROM).
+Hold **18s RESET** and **28s RESET** for ~**3 s**. Clocks freeze while the menu is open. Values are kept until a **full reset** (not stored in EEPROM).
 
 Full detail: [docs/user_guide_timing_menu.md](docs/user_guide_timing_menu.md)
 
@@ -242,7 +242,7 @@ If you change the period clock **before the first START** of the current period,
 
 ### Full game reset
 
-Hold **START/STOP** and **28s RESET** together for **~5 s**:
+Hold **START/STOP** and **28s RESET** together for **~3 s**:
 
 - Scores → **0–0**
 - Period → **P1** **8:00**, shot → **28**
@@ -282,20 +282,20 @@ For the **RUN** mode workflow, see [docs/user_guide_run_mode.md](docs/user_guide
 | Game **+1s**            | Period +1 s (hold **+10 s**); in timing menu **+30 s** / CLOCK toggle |
 | Game **−1s**            | Period −1 s (hold **−30 s**); in timing menu **−30 s** / CLOCK toggle |
 | Shot **±1s**            | Shot ±1 s (hold ±10 s)                                           |
-| Hold **18s + 28s**      | Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)     |
-| Hold **S/S + 28s** ~5 s | Full game reset                                                  |
-| Hold **S/S + RETURN** ~2 s | Reload period length; keep shot + exclusions                  |
+| Hold **18s + 28s** ~3 s | Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)     |
+| Hold **S/S + 28s** ~3 s | Full game reset                                                  |
+| Hold **S/S + RETURN** ~3 s | Reload period length; keep shot + exclusions                  |
 
 
 ---
 
 ## Libraries
 
+Matrix driver files are **vendored** in `waterpolo_scoreboard/` (copied from `test_waveshare/`): `RGBmatrixPanel`, `Adafruit_GFX`, `gamma.h`, `gfxfont.h`, `glcdfont.c`, `Fonts/fonts.h`. The sketch calls Waveshare `Reginit()` **before** `matrix.begin()`. You do not need the Library Manager Adafruit GFX / RGB matrix Panel packages for the scoreboard sketch.
+
 Arduino IDE → **Tools → Manage Libraries**:
 
-1. **Adafruit GFX Library**
-2. **RGB matrix Panel** (Adafruit)
-3. **LiquidCrystal I2C** (e.g. by Frank de Brabander), or Freenove’s `LiquidCrystal_I2C.zip` from their kit docs
+1. **LiquidCrystal I2C** (e.g. by Frank de Brabander), or Freenove’s `LiquidCrystal_I2C.zip` from their kit docs
 
 **Board:** Tools → Board → **Arduino Mega or Mega 2560**
 
@@ -377,7 +377,7 @@ Status legend: **USED** = wired by this project · **RESERVED** = claimed by the
 | A1  | USED   | Matrix HUB75 address **B**      |
 | A2  | USED   | Matrix HUB75 address **C**      |
 | A3  | USED   | Matrix HUB75 address **D**      |
-| A4  | USED   | Matrix HUB75 **E** (driven LOW) |
+| A4  | SPARE  |                                 |
 | A5  | SPARE  |                                 |
 | A6  | SPARE  |                                 |
 | A7  | SPARE  |                                 |
@@ -395,7 +395,7 @@ Status legend: **USED** = wired by this project · **RESERVED** = claimed by the
 
 **Digital:** D13, D14, D15, D16, D17, D30, D31, D32, D33, D34, D44, D45, D46, D47, D48, D49, D50, D51, D52, D53  
 
-**Analog / digital:** A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15  
+**Analog / digital:** A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15  
 
 **Do not use:** D0, D1 (USB serial), D22, D23 (matrix library)
 
@@ -407,7 +407,7 @@ Status legend: **USED** = wired by this project · **RESERVED** = claimed by the
 
 Suggested faceplate layout for the operator box (buttons + I2C LCD):
 
-Operator control panel button layout
+![Operator control panel button layout](docs/button_box_panel.png)
 
 **3D-print / CNC measurements** (Ø16 mm buttons + Freenove I2C LCD 1602): see `[docs/button_box_panel_measurements.md](docs/button_box_panel_measurements.md)` — panel **250 × 180 mm**, LCD bezel cutout **72 × 25 mm**, full hole-centre table and SVG. Printable mesh: `[docs/button_box_panel_faceplate.stl](docs/button_box_panel_faceplate.stl)`.
 
@@ -424,9 +424,9 @@ Operator control panel button layout
 
 ### RGB matrix → Mega (HUB75)
 
-Confirmed for **Waveshare RGB-Matrix-P3-64x32** (SKU **33840**) with the Adafruit `RGBmatrixPanel` library on **Arduino Mega 2560**. Data lines **R1…B2** are fixed on **D24–D29** (`PORTA`); address **A0–A3**, **CLK D11**, **LAT D9**, **OE D10**. On this panel **LAT/OE are swapped** vs Adafruit’s usual Mega chart (green #15→**D9** LAT, yellow #14→**D10** OE). If the panel is full white until LAT/OE are swapped, check those two wires.
+Confirmed for **Waveshare RGB-Matrix-P3-64x32** (SKU **33840**) with the vendored Waveshare `RGBmatrixPanel` driver on **Arduino Mega 2560** — pin numbers and ribbon colours match the working `waterpolo_scoreboard/` sketch. Data lines **R1…B2** are fixed on **D24–D29** (`PORTA`); address **A0–A3**, **CLK D11**, **LAT D9**, **OE D10**. Rainbow ribbon: **yellow #14 → LAT D9**, **green #15 → OE D10**. Pin 8 on this 64×32 HUB75 is **GND** (grey #8) — not address **E**.
 
-RGB Matrix HUB75 wiring to Arduino Mega
+![RGB Matrix HUB75 wiring to Arduino Mega](docs/rgb_matrix_mega_wiring.png)
 
 HUB75 IDC pairs (as on the connector) → Mega:
 
@@ -443,12 +443,7 @@ HUB75 IDC pairs (as on the connector) → Mega:
 | OE    | **D10** | GND       | **GND** |
 
 
-
-| Also          | Connection                                 |
-| ------------- | ------------------------------------------ |
-| E             | **A4** (drive LOW; pin 8 on this panel)    |
-| VH4 VCC / GND | **external 5 V ≥2.5 A PSU** (not Mega 5 V) |
-
+Power: **VH4 VCC / GND** → **external 5 V ≥2.5 A PSU** (not Mega 5 V).
 
 Leave **D22** and **D23** free — the matrix library writes the full `PORTA` register.
 
@@ -456,7 +451,7 @@ Leave **D22** and **D23** free — the matrix library writes the full `PORTA` re
 
 On a rainbow flat IDC ribbon, **brown is conductor 1** (= HUB75 **R1**). Align the brown edge with the pin-1 mark on the HUB75 header (often a triangle / arrow on the moulding). Colours then follow in order:
 
-HUB75 rainbow ribbon colour matrix
+![HUB75 rainbow ribbon colour matrix](docs/hub75_ribbon_colour_matrix.png)
 
 
 | #   | Colour | HUB75 | Mega              |
@@ -468,14 +463,14 @@ HUB75 rainbow ribbon colour matrix
 | 5   | Green  | R2    | **D27**           |
 | 6   | Blue   | G2    | **D28**           |
 | 7   | Violet | B2    | **D29**           |
-| 8   | Grey   | E     | **A4** (hold LOW) |
+| 8   | Grey   | GND   | **GND**           |
 | 9   | White  | A     | **A0**            |
 | 10  | Black  | B     | **A1**            |
 | 11  | Brown  | C     | **A2**            |
 | 12  | Red    | D     | **A3**            |
 | 13  | Orange | CLK   | **D11**           |
-| 14  | Yellow | OE    | **D10**           |
-| 15  | Green  | LAT   | **D9**            |
+| 14  | Yellow | LAT   | **D9**            |
+| 15  | Green  | OE    | **D10**           |
 | 16  | Blue   | GND   | **GND**           |
 
 
@@ -507,7 +502,6 @@ Grey ribbons with a **red stripe** mark pin 1 the same way (stripe = R1 / brown 
                     R2->27  G2->28  B2->29                   |
                     A->A0   B->A1   C->A2   D->A3            |
                     LAT->9  OE->10 CLK->11  GND->GND        |
-                    E -> A4 (LOW)                            |
                                                              |
               +------------------+     +---------------------+--+
               | Freenove I2C     |     | LoRa TX module       |
@@ -564,10 +558,9 @@ Grey ribbons with a **red stripe** mark pin 1 the same way (stripe = R1 / brown 
 4. **Wire Freenove I2C LCD** — **GND→GND**, **VCC→5V**, **SDA→D20**, **SCL→D21**. Contrast/backlight are onboard (no pot needed).
 5. **Wire the 5 V relay** to **D12** (see relay wiring above). Set `RELAY_ACTIVE_HIGH` to match your module.
 6. **Wire LoRa** module to Serial1 (18/19) and set `LORA_DEFAULT_CHANNEL` in the sketch to match remotes (default **2** = 433.150 MHz).
-7. Install the two Adafruit libraries listed above.
-8. Open `waterpolo_scoreboard/waterpolo_scoreboard.ino`.
-9. Tools → Board → **Arduino Mega or Mega 2560**, select the correct COM port.
-10. Upload, then power the matrix supply and reboot/reset the Mega.
+7. Open `waterpolo_scoreboard/waterpolo_scoreboard.ino` (matrix driver files are already in that folder).
+8. Tools → Board → **Arduino Mega or Mega 2560**, select the correct COM port.
+9. Upload, then power the matrix supply and reboot/reset the Mega.
 
 ### First-run checks
 
@@ -722,36 +715,33 @@ Use this while waiting for the **5 V ≥2.5 A** supply. It does **not** validate
 | Step                           | Expect                                                            |
 | ------------------------------ | ----------------------------------------------------------------- |
 | Signal nets (R1…OE)            | **~5 V** on that colour only; others ~0 V                         |
-| GND nets (Yellow #4, Blue #16) | Switch meter to **continuity/ohms** — beep / low ohms to Mega GND |
+| GND nets (Yellow #4, Grey #8, Blue #16) | Switch meter to **continuity/ohms** — beep / low ohms to Mega GND |
 
 
 If a colour never reaches ~5 V when named, that Mega pin ↔ ribbon wire is open or on the wrong pin. Fix those before the powered matrix test.
 
 ### RGB matrix (HUB75)
 
-Sketch folder: `test_matrix/`
+Sketch folder: `test_waveshare/`
 
-Use this before the full scoreboard sketch to confirm the panel, ribbon, and Mega pins.
+Use this before the full scoreboard sketch to confirm the panel, ribbon, and Mega pins. It uses the same vendored Waveshare driver and `Reginit()` as the scoreboard.
 
 > **Power first (required).** The panel must be powered from the **external 5 V ≥2.5 A** supply on the **VH4** connector, with **PSU GND** tied to **Mega GND**.  
 > Do **not** judge the display with only USB/Mega power. With no VH4 supply, the ribbon can still weakly light some LEDs (often a **red** strip on the left) by leaking current through the data pins — that is **parasitic power**, can stress the Mega, and is **not** a valid test result.
 
 1. Connect **VH4** to the external **5 V ≥2.5 A** PSU (**VCC** and **GND**); tie **PSU GND** to **Mega GND**
 2. Wire the HUB75 ribbon exactly as in [RGB matrix → Mega (HUB75)](#rgb-matrix--mega-hub75) (brown = pin 1 / R1 → **D24**, …)
-3. Install **Adafruit GFX** and **RGB matrix Panel** (Library Manager) if needed
-4. Open `test_matrix/test_matrix.ino`, select **Arduino Mega or Mega 2560**, upload
-5. The panel should cycle every ~2 s:
+3. Open `test_waveshare/test_waveshare.ino`, select **Arduino Mega or Mega 2560**, upload
+4. Open Serial Monitor @ **115200**. The panel starts **red**. Type a command:
 
-
-| Step | What you should see                             |
-| ---- | ----------------------------------------------- |
-| 1    | Full **red** screen                             |
-| 2    | Full **green** screen                           |
-| 3    | Full **blue** screen                            |
-| 4    | Vertical **R / G / B** bars                     |
-| 5    | Text **MATRIX OK** / **64x32**                  |
-| 6    | White border + yellow block bouncing left–right |
-
+| Key | What you should see |
+| --- | ------------------- |
+| `r` / `g` / `b` / `w` / `0` | Full **red** / **green** / **blue** / **white** / **off** |
+| `c` | Column walk (one red vertical line) |
+| `y` | Row walk (one red horizontal line) |
+| `q` | 16-column green sections |
+| `t` | Centre cross + corner pixels |
+| `h` | Help |
 
 **If a red strip shows with VH4 unplugged:** expected parasitic glow — connect proper VH4 power before debugging further.
 
@@ -759,10 +749,7 @@ Use this before the full scoreboard sketch to confirm the panel, ribbon, and Meg
 
 1. Confirm the ribbon is in the panel **HUB75 INPUT** (often labelled **IN** / arrow in) — **not** the OUTPUT / cascade port
 2. Measure **5 V at the VH4 connector while the red screen is on** — if it sags below ~4.5 V, the PSU or wiring is too weak (use ≥2.5 A, short thick leads)
-3. Pin 8 is **E** on this Waveshare — wire grey #8 to **A4** (sketches hold it LOW). Do not leave it floating.
-4. Upload `test_matrix` with `#define DIAG 0` (full red, static). Then try `#define DIAG 2` (R2 bottom only).
-  - **DIAG 2 steady** but **DIAG 0** bottom flashes → PSU/GND current under full load  
-  - **DIAG 2** itself flashes → still an R2 / lower-plane / power issue at the panel
+3. Grey #8 is **GND** on this 64×32 panel — wire it to **Mega GND**, not A4
 
 **If blue looks solid but red/green are scattered or “short”:** the blue wires are probably fine; re-check these Mega pins / ribbon colours:
 
@@ -775,8 +762,6 @@ Use this before the full scoreboard sketch to confirm the panel, ribbon, and Meg
 | G2      | G2    | **D28** | Blue (#6)      |
 
 
-Re-upload `test_matrix` — it now shows **R1 TOP / R2 BOT / G1 TOP / G2 BOT / B1 TOP / B2 BOT** half-screen steps. Whichever half or colour is missing or speckled points at that wire.
-
 **If colours are swapped** (e.g. green↔blue): swap physical **G1↔B1** and **G2↔B2**, then re-run the test.
 
-**If the panel is blank / scrambled / full white with VH4 powered:** check common GND, **CLK on D11**, **LAT D9**, **OE D10**, **E on A4**, and data on **D24–D29**. **Full white** that clears only after swapping LAT/OE ⇒ use **LAT=D9 / OE=D10** (green #15 on **D9**, yellow #14 on **D10**). If Adafruit `test_matrix` stays white but bitbang colours work, use bitbang to confirm wiring; the damaged panel may not scan cleanly with the fast library ISR.
+**If the panel is blank / scrambled / full white with VH4 powered:** check common GND, **CLK on D11**, **LAT D9**, **OE D10**, grey #8 to **GND**, and data on **D24–D29**. Ribbon: **yellow #14 → LAT D9**, **green #15 → OE D10** (as in `waterpolo_scoreboard/`). Confirm `Reginit()` runs before `matrix.begin()`.

@@ -15,7 +15,7 @@ Also summarised in the main [README — How to use](../README.md#how-to-use).
 
 | Action | Result |
 |--------|--------|
-| Hold **18s RESET** + **28s RESET** together ~**2 s** | Opens the timing menu. All clocks stop. |
+| Hold **18s RESET** + **28s RESET** together ~**3 s** | Opens the timing menu. All clocks stop. |
 | **START/STOP** (shown as **S/S** on the LCD) | Next page. On the last page (**CLOCK**), confirms and **exits**. |
 | **RETURN** | Exit immediately (keeps changes already made). |
 | Any other button | Ignored while the menu is open. |
@@ -87,7 +87,7 @@ Full button guides:
 
 ## Typical setup before a game
 
-1. Hold **18s RESET** + **28s RESET** ~2 s.
+1. Hold **18s RESET** + **28s RESET** ~3 s.
 2. Set **PERIOD** (e.g. 8:00 or 6:30).
 3. Press **S/S** → set **INTERVAL**.
 4. Press **S/S** → set **HALFTIME**.
@@ -101,4 +101,4 @@ Full button guides:
 
 - Opening the menu **stops** the period and play clocks.
 - Leaving the menu does **not** auto-start play — press **START/STOP** when ready.
-- A **full reset** (hold **START/STOP** + **28s RESET** ~5 s) restores all timing values and sets **CLOCK** back to **STOP**.
+- A **full reset** (hold **START/STOP** + **28s RESET** ~3 s) restores all timing values and sets **CLOCK** back to **STOP**.

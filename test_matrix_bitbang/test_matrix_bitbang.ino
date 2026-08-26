@@ -1,6 +1,5 @@
 /*
- * Ultra-slow HUB75 bit-bang — no Adafruit library.
- * Board: Arduino Mega 2560 + Waveshare 64x32 (1/16 scan)
+ * HUB75 bit-bang — Arduino Mega 2560 + Waveshare 64x32 (1/16 scan)
  *
  * Wiring (same as scoreboard):
  *   R1 D24  G1 D25  B1 D26
@@ -8,18 +7,17 @@
  *   A  A0   B  A1   C  A2   D  A3
  *   E  A4   (hold LOW) — grey #8
  *   CLK D11  LAT D9  OE D10
- *   Wire: green #15 → D9, yellow #14 → D10 (this panel needs LAT/OE
- *   swapped vs Adafruit charts — press x only if you change wiring)
+ *   Ribbon: green #15 → D9 (LAT), yellow #14 → D10 (OE)
  *   GND: yellow #4 + blue #16 → Mega GND
  *   VH4: 5 V PSU; PSU GND ↔ Mega GND
  *   Ribbon in HUB75 **INPUT** only
  *
  * Serial @ 9600, Newline:
  *   r/g/b  full colour     t top-red   n bottom-red   0 off
- *   s      row walk
- *   c      column walk (single red vertical line 0→63)
- *   m      mark cols 49–52 green, rest red (isolate bad strip)
- *   q      section walk — light each 16-col band (0-15,16-31,32-47,48-63)
+ *   s      row walk (row N and N+16 together is correct 1/16 scan)
+ *   c      column walk — bright red vertical line 0→63
+ *   m      ruler: cols 0,16,32,48,63 green
+ *   q      section walk — each 16-col band (0-15,16-31,32-47,48-63)
  *   f      flip shift direction (if column walk moves the wrong way)
  *   i      OE polarity    x LAT/OE swap    h help
  */
@@ -30,13 +28,9 @@ const uint8_t PIN_R1 = 24, PIN_G1 = 25, PIN_B1 = 26;
 const uint8_t PIN_R2 = 27, PIN_G2 = 28, PIN_B2 = 29;
 const uint8_t PIN_A = A0, PIN_B = A1, PIN_C = A2, PIN_D = A3, PIN_E = A4;
 const uint8_t PIN_CLK = 11;
-// Working map on this Waveshare (matches bitbang after "x"): LAT=D9, OE=D10
+// Confirmed on both panels: green #15 → D9 LAT, yellow #14 → D10 OE
 const uint8_t PIN_LAT_HW = 9;
 const uint8_t PIN_OE_HW = 10;
-
-// Known bad column band on the current (failing) panel
-const uint8_t BAD_COL_LO = 49;
-const uint8_t BAD_COL_HI = 52;
 
 uint8_t pinLat = PIN_LAT_HW;
 uint8_t pinOe = PIN_OE_HW;
@@ -45,7 +39,7 @@ bool flipShift = false;
 
 enum Pattern : uint8_t {
   PAT_OFF, PAT_RED, PAT_GREEN, PAT_BLUE, PAT_TOP, PAT_BOT,
-  PAT_ROWWALK, PAT_COLWALK, PAT_COLMARK, PAT_SECTION
+  PAT_ROWWALK, PAT_COLWALK, PAT_RULER, PAT_SECTION
 };
 Pattern pat = PAT_RED;
 uint8_t walkRow = 0;
@@ -61,11 +55,6 @@ void setAddr(uint8_t row) {
   digitalWrite(PIN_E, LOW);
 }
 
-void pulseClk() {
-  digitalWrite(PIN_CLK, HIGH);
-  digitalWrite(PIN_CLK, LOW);
-}
-
 void pulseLat() {
   digitalWrite(pinLat, HIGH);
   digitalWrite(pinLat, LOW);
@@ -79,14 +68,22 @@ void oeShow() {
   digitalWrite(pinOe, oeActiveHighBlank ? LOW : HIGH);
 }
 
+// Mega: R1..B2 = PORTA bits 2..7 (D24–D29), CLK = PORTB bit 5 (D11).
 void writePixel(bool topOn, bool botOn, bool r, bool g, bool b) {
-  digitalWrite(PIN_R1, topOn && r);
-  digitalWrite(PIN_G1, topOn && g);
-  digitalWrite(PIN_B1, topOn && b);
-  digitalWrite(PIN_R2, botOn && r);
-  digitalWrite(PIN_G2, botOn && g);
-  digitalWrite(PIN_B2, botOn && b);
-  pulseClk();
+  uint8_t bits = 0;
+  if (topOn && r) bits |= _BV(2);
+  if (topOn && g) bits |= _BV(3);
+  if (topOn && b) bits |= _BV(4);
+  if (botOn && r) bits |= _BV(5);
+  if (botOn && g) bits |= _BV(6);
+  if (botOn && b) bits |= _BV(7);
+  PORTA = (PORTA & 0x03) | bits;
+  PORTB |= _BV(5);
+  PORTB &= ~_BV(5);
+}
+
+uint8_t mapX(uint8_t i) {
+  return flipShift ? (uint8_t)(63 - i) : i;
 }
 
 void shiftSolid(bool topOn, bool botOn, bool r, bool g, bool b) {
@@ -96,56 +93,45 @@ void shiftSolid(bool topOn, bool botOn, bool r, bool g, bool b) {
 }
 
 void shiftOneColumn(uint8_t col, bool topOn, bool botOn, bool r, bool g, bool b) {
+  uint8_t col2 = (uint8_t)((col + 1) & 63);
   for (uint8_t i = 0; i < 64; i++) {
-    uint8_t x = flipShift ? (uint8_t)(63 - i) : i;
-    bool on = (x == col);
+    uint8_t x = mapX(i);
+    bool on = (x == col) || (x == col2);
     writePixel(topOn && on, botOn && on, r, g, b);
   }
 }
 
-void shiftMarkBadBand(bool topOn, bool botOn) {
+void shiftRuler(bool topOn, bool botOn) {
   for (uint8_t i = 0; i < 64; i++) {
-    uint8_t x = flipShift ? (uint8_t)(63 - i) : i;
-    bool band = (x >= BAD_COL_LO && x <= BAD_COL_HI);
-    // Rest red; bad band green — if band stays wrong colour, those columns are stuck
-    if (band) {
+    uint8_t x = mapX(i);
+    bool tick = (x == 0 || x == 16 || x == 32 || x == 48 || x == 63);
+    if (tick) {
       writePixel(topOn, botOn, false, true, false);
     } else {
-      writePixel(topOn, botOn, true, false, false);
+      writePixel(false, false, false, false, false);
     }
   }
 }
 
-// Light one 16-column driver section green; others off.
 void shiftSection(uint8_t section, bool topOn, bool botOn) {
   uint8_t lo = (uint8_t)(section * 16);
   uint8_t hi = (uint8_t)(lo + 15);
   for (uint8_t i = 0; i < 64; i++) {
-    uint8_t x = flipShift ? (uint8_t)(63 - i) : i;
+    uint8_t x = mapX(i);
     bool on = (x >= lo && x <= hi);
     writePixel(topOn && on, botOn && on, false, true, false);
   }
 }
 
-bool gTop = true, gBot = true, gR = true, gG = false, gB = false;
-uint8_t gCol = 0;
-uint8_t gSection = 0;
-
-void shSolid() { shiftSolid(gTop, gBot, gR, gG, gB); }
-void shCol() { shiftOneColumn(gCol, true, true, true, false, false); }
-void shMark() { shiftMarkBadBand(true, true); }
-void shSection() { shiftSection(gSection, true, true); }
-
-void scanAllRows(void (*shifter)()) {
-  oeBlank();
+void latchAndScanRows(uint16_t onUs) {
   for (uint8_t row = 0; row < 16; row++) {
-    shifter();
+    oeBlank();
     setAddr(row);
     pulseLat();
     oeShow();
-    delayMicroseconds(80);
-    oeBlank();
+    delayMicroseconds(onUs);
   }
+  oeBlank();
 }
 
 void paintOnce() {
@@ -154,7 +140,9 @@ void paintOnce() {
       walkMs = millis();
       walkRow = (walkRow + 1) & 0x0F;
       Serial.print(F("Row "));
-      Serial.println(walkRow);
+      Serial.print(walkRow);
+      Serial.print(F(" + "));
+      Serial.println((int)walkRow + 16);
     }
     oeBlank();
     shiftSolid(true, true, true, false, false);
@@ -166,23 +154,26 @@ void paintOnce() {
   }
 
   if (pat == PAT_COLWALK) {
-    if (millis() - walkMs >= 120) {
+    if (millis() - walkMs >= 280) {
       walkMs = millis();
       walkCol = (walkCol + 1) & 63;
-      if (walkCol == 0 || walkCol == BAD_COL_LO || walkCol == BAD_COL_HI) {
-        Serial.print(F("Col "));
-        Serial.print(walkCol);
-        Serial.print(F(" flip="));
-        Serial.println(flipShift ? F("Y") : F("N"));
-      }
+      Serial.print(F("Col "));
+      Serial.print(walkCol);
+      Serial.print(F("-"));
+      Serial.print((walkCol + 1) & 63);
+      Serial.print(F(" flip="));
+      Serial.println(flipShift ? F("Y") : F("N"));
     }
-    gCol = walkCol;
-    scanAllRows(shCol);
+    oeBlank();
+    shiftOneColumn(walkCol, true, true, true, false, false);
+    latchAndScanRows(500);
     return;
   }
 
-  if (pat == PAT_COLMARK) {
-    scanAllRows(shMark);
+  if (pat == PAT_RULER) {
+    oeBlank();
+    shiftRuler(true, true);
+    latchAndScanRows(400);
     return;
   }
 
@@ -197,35 +188,34 @@ void paintOnce() {
       Serial.print(F("-"));
       Serial.println((int)walkSection * 16 + 15);
     }
-    gSection = walkSection;
-    scanAllRows(shSection);
+    oeBlank();
+    shiftSection(walkSection, true, true);
+    latchAndScanRows(400);
     return;
   }
 
-  gTop = true;
-  gBot = true;
-  gR = gG = gB = false;
+  bool topOn = true, botOn = true, r = false, g = false, b = false;
   switch (pat) {
-    case PAT_OFF:   gTop = gBot = false; break;
-    case PAT_RED:   gR = true; break;
-    case PAT_GREEN: gG = true; break;
-    case PAT_BLUE:  gB = true; break;
-    case PAT_TOP:   gR = true; gBot = false; break;
-    case PAT_BOT:   gR = true; gTop = false; break;
+    case PAT_OFF:   topOn = botOn = false; break;
+    case PAT_RED:   r = true; break;
+    case PAT_GREEN: g = true; break;
+    case PAT_BLUE:  b = true; break;
+    case PAT_TOP:   r = true; botOn = false; break;
+    case PAT_BOT:   r = true; topOn = false; break;
     default: break;
   }
-  scanAllRows(shSolid);
+  oeBlank();
+  shiftSolid(topOn, botOn, r, g, b);
+  latchAndScanRows(300);
 }
 
 void printHelp() {
-  Serial.println(F("Bit-bang matrix test"));
-  Serial.println(F("  r/g/b  t/n  0 off  s row-walk  c col-walk"));
-  Serial.print(F("  m mark cols "));
-  Serial.print(BAD_COL_LO);
-  Serial.print(F("-"));
-  Serial.print(BAD_COL_HI);
-  Serial.println(F(" green, rest red"));
-  Serial.println(F("  q section walk (16-col bands 0/1/2/3)"));
+  Serial.println(F("Bit-bang matrix test (new panel)"));
+  Serial.println(F("  r/g/b  t/n  0 off"));
+  Serial.println(F("  s row-walk (row N and N+16 together = OK)"));
+  Serial.println(F("  c col-walk (bright 2px red line 0->63)"));
+  Serial.println(F("  m ruler cols 0,16,32,48,63 green"));
+  Serial.println(F("  q section walk (16-col bands)"));
   Serial.println(F("  f flip shift dir   i OE pol   x LAT/OE   h help"));
   Serial.print(F("flip="));
   Serial.print(flipShift ? F("Y") : F("N"));
@@ -248,7 +238,7 @@ void setup() {
   oeBlank();
   delay(200);
   printHelp();
-  Serial.println(F("Pattern=RED"));
+  Serial.println(F("Pattern=RED  LAT=D9 OE=D10"));
 }
 
 void loop() {
@@ -266,19 +256,15 @@ void loop() {
       pat = PAT_ROWWALK;
       walkRow = 0;
       walkMs = millis();
-      Serial.println(F("ROW WALK"));
+      Serial.println(F("ROW WALK — rows N and N+16 together is correct"));
     } else if (c == 'c' || c == 'C') {
       pat = PAT_COLWALK;
       walkCol = 0;
       walkMs = millis();
-      Serial.println(F("COL WALK — red line should sweep left→right"));
+      Serial.println(F("COL WALK — 2px red line should sweep left->right"));
     } else if (c == 'm' || c == 'M') {
-      pat = PAT_COLMARK;
-      Serial.print(F("MARK "));
-      Serial.print(BAD_COL_LO);
-      Serial.print(F("-"));
-      Serial.print(BAD_COL_HI);
-      Serial.println(F(" green, rest red"));
+      pat = PAT_RULER;
+      Serial.println(F("RULER — green ticks at cols 0 16 32 48 63"));
     } else if (c == 'q' || c == 'Q') {
       pat = PAT_SECTION;
       walkSection = 0;

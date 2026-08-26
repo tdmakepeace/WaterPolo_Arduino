@@ -5,13 +5,11 @@
  * Mirror: Freenove I2C IIC LCD 1602 (16x2) on Mega SDA/SCL
  * Remote shot clocks: LoRa TX via Serial1 (same protocol as lora_remote2)
  *
+ * Matrix driver: Waveshare RGBmatrixPanel + Adafruit_GFX vendored in this
+ * folder (same files as test_waveshare/). Call Reginit() before matrix.begin().
+ *
  * Libraries (Library Manager):
  *   - LiquidCrystal I2C (e.g. Frank de Brabander / Freenove zip)
- *   - If MATRIX_USE_BITBANG is 0: also Adafruit GFX + RGB matrix Panel
- *
- * Matrix: default MATRIX_USE_BITBANG 1 (software HUB75 — needed on the
- * current Waveshare when Adafruit test_matrix stays white/blue). Set to 0
- * after a healthy panel + clean Adafruit test_matrix.
  *
  * Buttons (active LOW, internal pull-ups — wire other side to GND):
  *   D2  = period clock start / stop
@@ -54,11 +52,11 @@
  * later periods (INTERVAL / D2 long-press reload).
  *
  * D2 short press: start/stop immediately (play mode only).
- * Hold D2 ~5 s (STOP mode, from stopped): resets period clock to match length.
- * Hold D2 ~5 s (RUN mode): stops the period clock (and play).
- * Hold D2 + D35 ~2 s: reload period to match length; keeps shot + exclusions.
- * Hold D2 + D6 together for 5 s: full reset (scores, clocks, exclusions → defaults).
- * Hold D5 + D6 ~2 s: timing menu (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK).
+ * Hold D2 ~3 s (STOP mode, from stopped): resets period clock to match length.
+ * Hold D2 ~3 s (RUN mode): stops the period clock (and play).
+ * Hold D2 + D35 ~3 s: reload period to match length; keeps shot + exclusions.
+ * Hold D2 + D6 together for 3 s: full reset (scores, clocks, exclusions → defaults).
+ * Hold D5 + D6 ~3 s: timing menu (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK).
  *   D36 / D37 = ±30 s (CLOCK page: toggle STOP/RUN) · D2 = next / confirm · D35 exit.
  * D35 short: silent return from TO/IN. Hold D35 ~3 s: buzzer; also returns if in TO/IN.
  *
@@ -70,19 +68,8 @@
 
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-
-// 1 = software HUB75 (works on this Waveshare when Adafruit stays blue/white)
-// 0 = Adafruit RGBmatrixPanel (use after replacement panel if Adafruit test_matrix is clean)
-#ifndef MATRIX_USE_BITBANG
-#define MATRIX_USE_BITBANG 1
-#endif
-
-#if !MATRIX_USE_BITBANG
-#include <Adafruit_GFX.h>
-#include <RGBmatrixPanel.h>
-#else
-#include "hub75_soft.h"
-#endif
+#include "RGBmatrixPanel.h"
+#include "Adafruit_GFX.h"
 
 // ----- Button pins -----
 const uint8_t PIN_CLOCK_TOGGLE = 2;
@@ -107,29 +94,130 @@ const uint8_t PIN_AWAY_DEC     = 43;
 // false = LOW energises relay (common optocoupler relay boards marked LOW)
 const bool RELAY_ACTIVE_HIGH = true;
 
-// ----- HUB75 pins -----
+// ----- HUB75 pins (working Waveshare 64x32 — do not swap LAT/OE) -----
+// R1 D24  G1 D25  B1 D26  R2 D27  G2 D28  B2 D29  (PORTA, fixed by lib)
+// Ribbon: yellow #14 → LAT D9,  green #15 → OE D10,  orange #13 → CLK D11
 #define CLK 11
-// Waveshare LAT/OE swapped vs Adafruit charts (confirmed with bitbang):
-// green #15 → D9 = LAT, yellow #14 → D10 = OE.
 #define OE  10
 #define LAT  9
 #define A   A0
 #define B   A1
 #define C   A2
 #define D   A3
-#define E   A4  // HUB75 pin 8 — hold LOW on this 64x32 panel
 
-// Dead columns on the current panel (49–52). Keep UI left of this.
-const int MATRIX_SAFE_WIDTH = 49;
-
-#if MATRIX_USE_BITBANG
-Hub75Soft matrix;
-#else
-const bool MATRIX_DOUBLE_BUFFER = false;
+const bool MATRIX_DOUBLE_BUFFER = true;
 const uint8_t MATRIX_BRIGHT = 3;
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, MATRIX_DOUBLE_BUFFER, 64);
 uint16_t COL_HOME, COL_AWAY, COL_CLOCK, COL_SHOT, COL_LABEL, COL_DIM, COL_EXCL;
-#endif
+
+// Dead columns on some panels (49–52). Keep UI left of this.
+const int MATRIX_SAFE_WIDTH = 49;
+
+// Waveshare panel register init — MUST run before matrix.begin()
+void Reginit()
+{
+  pinMode(24, OUTPUT); // R1
+  pinMode(25, OUTPUT); // G1
+  pinMode(26, OUTPUT); // B1
+
+  pinMode(27, OUTPUT); // R2
+  pinMode(28, OUTPUT); // G2
+  pinMode(29, OUTPUT); // B2
+
+  pinMode(CLK, OUTPUT);
+  pinMode(OE, OUTPUT);
+  pinMode(LAT, OUTPUT);
+
+  digitalWrite(OE, HIGH);
+  digitalWrite(LAT, LOW);
+  digitalWrite(CLK, LOW);
+
+  int MaxLed = 64;
+
+  int C12[16] =
+  {
+    0, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1,
+    1, 1, 1, 1
+  };
+
+  int C13[16] =
+  {
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 0
+  };
+
+  for (int l = 0; l < MaxLed; l++)
+  {
+    int y = l % 16;
+
+    digitalWrite(24, LOW);
+    digitalWrite(25, LOW);
+    digitalWrite(26, LOW);
+    digitalWrite(27, LOW);
+    digitalWrite(28, LOW);
+    digitalWrite(29, LOW);
+
+    if (C12[y] == 1)
+    {
+      digitalWrite(24, HIGH);
+      digitalWrite(25, HIGH);
+      digitalWrite(26, HIGH);
+      digitalWrite(27, HIGH);
+      digitalWrite(28, HIGH);
+      digitalWrite(29, HIGH);
+    }
+
+    if (l > MaxLed - 12)
+      digitalWrite(LAT, HIGH);
+    else
+      digitalWrite(LAT, LOW);
+
+    digitalWrite(CLK, HIGH);
+    delayMicroseconds(2);
+    digitalWrite(CLK, LOW);
+  }
+
+  digitalWrite(LAT, LOW);
+  digitalWrite(CLK, LOW);
+
+  for (int l = 0; l < MaxLed; l++)
+  {
+    int y = l % 16;
+
+    digitalWrite(24, LOW);
+    digitalWrite(25, LOW);
+    digitalWrite(26, LOW);
+    digitalWrite(27, LOW);
+    digitalWrite(28, LOW);
+    digitalWrite(29, LOW);
+
+    if (C13[y] == 1)
+    {
+      digitalWrite(24, HIGH);
+      digitalWrite(25, HIGH);
+      digitalWrite(26, HIGH);
+      digitalWrite(27, HIGH);
+      digitalWrite(28, HIGH);
+      digitalWrite(29, HIGH);
+    }
+
+    if (l > MaxLed - 13)
+      digitalWrite(LAT, HIGH);
+    else
+      digitalWrite(LAT, LOW);
+
+    digitalWrite(CLK, HIGH);
+    delayMicroseconds(2);
+    digitalWrite(CLK, LOW);
+  }
+
+  digitalWrite(LAT, LOW);
+  digitalWrite(CLK, LOW);
+}
 
 // ----- Freenove I2C LCD 1602 (SDA=20, SCL=21 on Mega) -----
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -290,12 +378,12 @@ Btn buttons[] = {
 
 const uint8_t BTN_COUNT = sizeof(buttons) / sizeof(buttons[0]);
 const uint16_t DEBOUNCE_MS = 15;
-const uint16_t LONG_PRESS_MS = 5000;   // D2 solo: STOP reload / RUN stop period
+const uint16_t LONG_PRESS_MS = 3000;   // D2 solo: STOP reload / RUN stop period
 const uint16_t ADJUST_LONG_MS = 800;   // D36 +10 / D37 -30; shot ±10
 const uint16_t RETURN_LONG_MS = 3000;  // D35 long → buzzer (+ return if TO/IN)
-const uint16_t COMBO_RESET_MS = 5000;  // D2 + D6 held → full reset
-const uint16_t COMBO_PERIOD_RELOAD_MS = 2000;  // D2 + D35 → periodLength, keep shot/excl
-const uint16_t MENU_HOLD_MS   = 2000;  // D5 + D6 held → timing menu
+const uint16_t COMBO_RESET_MS = 3000;  // D2 + D6 held → full reset
+const uint16_t COMBO_PERIOD_RELOAD_MS = 3000;  // D2 + D35 → periodLength, keep shot/excl
+const uint16_t MENU_HOLD_MS   = 3000;  // D5 + D6 held → timing menu
 
 uint32_t clockBtnDownMs = 0;
 bool clockLongHandled = false;
@@ -806,11 +894,11 @@ void serviceLcdAck() {
 }
 
 void setup() {
-  // Matrix first — before LoRa / LCD.
-  pinMode(E, OUTPUT);
-  digitalWrite(E, LOW);
+  // Matrix first — Waveshare register init MUST run before begin().
+  Reginit();
+  delay(100);
   matrix.begin();
-#if !MATRIX_USE_BITBANG
+  delay(500);
   matrix.setTextWrap(false);
   COL_HOME  = matrix.Color333(MATRIX_BRIGHT, MATRIX_BRIGHT, MATRIX_BRIGHT);  // white
   COL_AWAY  = matrix.Color333(0, 0, MATRIX_BRIGHT);                          // blue
@@ -820,9 +908,10 @@ void setup() {
   COL_DIM   = matrix.Color333(1, 1, 1);
   COL_EXCL  = matrix.Color333(MATRIX_BRIGHT, 0, MATRIX_BRIGHT);
   matrix.fillScreen(matrix.Color333(MATRIX_BRIGHT, 0, 0));
+  if (MATRIX_DOUBLE_BUFFER) matrix.swapBuffers(false);
   delay(400);
   matrix.fillScreen(0);
-#endif
+  if (MATRIX_DOUBLE_BUFFER) matrix.swapBuffers(false);
 
   for (uint8_t i = 0; i < BTN_COUNT; i++) {
     pinMode(buttons[i].pin, INPUT_PULLUP);
@@ -870,18 +959,18 @@ void loop() {
 
   pollButtons();
 
-  bool needsBlink = (secondsLeft == 0) || (timeoutLeft == 0 && intervalLeft == 0 &&
-                     shotLeft == 0 && !clockRunning);
-  if (displayDirty || (millis() - lastDrawMs >= (needsBlink ? 200UL : 250UL))) {
+  bool needsBlink = false;
+  if (!inSettingsMenu) {
+    int mainSec = secondsLeft;
+    if (inTimeout()) mainSec = timeoutLeft;
+    else if (inInterval()) mainSec = intervalLeft;
+    needsBlink = (mainSec == 0) || (shotLeft == 0);
+  }
+  if (displayDirty || (needsBlink && (millis() - lastDrawMs >= 400UL))) {
     drawMatrix();
     lastDrawMs = millis();
     displayDirty = false;
   }
-
-#if MATRIX_USE_BITBANG
-  // Keep scanning — soft driver has no timer ISR
-  matrix.scan();
-#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -1366,14 +1455,6 @@ void drawLcd() {
 }
 
 // Main clock colours: white >1:00, orange 0:29–1:00 (incl. 0:38–1:00), red ≤0:28.
-#if MATRIX_USE_BITBANG
-uint8_t mainClockColor(int secLeft) {
-  if (secLeft == 0) return ((millis() / 400) & 1) ? H75_OFF : H75_R;
-  if (secLeft > 60) return H75_W;
-  if (secLeft > 28) return H75_RG;  // orange through 1:00
-  return H75_R;
-}
-#else
 uint16_t mainClockColor(int secLeft) {
   if (secLeft == 0) {
     return ((millis() / 400) & 1)
@@ -1386,81 +1467,11 @@ uint16_t mainClockColor(int secLeft) {
   }
   return matrix.Color333(MATRIX_BRIGHT, 0, 0);
 }
-#endif
 
-#if MATRIX_USE_BITBANG
-void drawMatrix() {
-  matrix.clear();
-  (void)MATRIX_SAFE_WIDTH;
-
-  char buf[8];
-  if (inSettingsMenu) {
-    matrix.printAt(1, 1, "SET", H75_RG, 1);
-    snprintf(buf, sizeof(buf), "%u/%u", (unsigned)(menuItem + 1),
-             (unsigned)MENU_ITEM_COUNT);
-    matrix.printAt(47, 3, buf, H75_W, 1);
-    matrix.printAt(1, 10, menuItemName(), H75_W, 1);
-    if (menuIsClockItem()) {
-      matrix.printAt(16, 18, menuClockLabel(), H75_W, 2);
-    } else {
-      formatTime(menuItemValue(), buf);
-      matrix.printAt(16, 18, buf, H75_W, 2);
-    }
-    return;
-  }
-
-  // Top: home score | P#/TO/IN/HT | away score (no H/A labels)
-  snprintf(buf, sizeof(buf), "%02d", homeScore);
-  matrix.printAt(1, 1, buf, H75_W, 2);
-  snprintf(buf, sizeof(buf), "%02d", awayScore);
-  matrix.printAt(47, 1, buf, H75_B, 2);
-
-  if (inTimeout()) {
-    matrix.printAt(28, 3, "TO", H75_RG, 1);
-  } else if (inInterval()) {
-    matrix.printAt(28, 3, intervalIsHalfTime ? "HT" : "IN", H75_RG, 1);
-  } else {
-    snprintf(buf, sizeof(buf), "P%d", periodNum);
-    matrix.printAt(28, 3, buf, H75_RG, 1);
-  }
-
-  // Middle: large main clock (period / TO / IN / HT)
-  int mainSec = secondsLeft;
-  if (inTimeout()) mainSec = timeoutLeft;
-  else if (inInterval()) mainSec = intervalLeft;
-  formatTime(mainSec, buf);
-  // 4-char m:ss at scale 2 → 32 px wide; centre on 64
-  matrix.printAt(16, 12, buf, mainClockColor(mainSec), 2);
-
-  // Bottom left: shot clock (always red)
-  char sbuf[3];
-  sprintf(sbuf, "%02d", shotLeft);
-  uint8_t shotCol = H75_R;
-  if (shotLeft == 0) shotCol = ((millis() / 400) & 1) ? H75_OFF : H75_R;
-  matrix.printAt(1, 24, sbuf, shotCol, 1);
-
-  if (inTimeout()) {
-    // Frozen period clock copied to bottom right next to shot
-    formatTime(secondsLeft, buf);
-    matrix.printAt(40, 24, buf, H75_W, 1);
-  } else if (!inTimeout()) {
-    if (excl1Left > 0) {
-      char e1[3];
-      sprintf(e1, "%02d", excl1Left);
-      matrix.printAt(20, 24, e1, H75_RB, 1);
-    }
-    if (excl2Left > 0) {
-      char e2[3];
-      sprintf(e2, "%02d", excl2Left);
-      matrix.printAt(28, 24, e2, H75_RB, 1);
-    }
-  }
-}
-#else
 void drawDigitPair(int x, int y, int value, uint16_t color) {
   char buf[3];
   sprintf(buf, "%02d", value);
-  matrix.setTextSize(2);
+  matrix.setTextSize(1);
   matrix.setTextColor(color);
   matrix.setCursor(x, y);
   matrix.print(buf);
@@ -1472,18 +1483,18 @@ void drawMatrix() {
   if (inSettingsMenu) {
     matrix.setTextSize(1);
     matrix.setTextColor(COL_LABEL);
-    matrix.setCursor(1, 2);
+    matrix.setCursor(1, 1);
     matrix.print("SET");
     matrix.setTextColor(COL_CLOCK);
-    matrix.setCursor(46, 2);
+    matrix.setCursor(46, 1);
     matrix.print(menuItem + 1);
     matrix.print("/");
     matrix.print(MENU_ITEM_COUNT);
-    matrix.setCursor(1, 12);
+    matrix.setCursor(1, 9);
     matrix.print(menuItemName());
     matrix.setTextSize(2);
     matrix.setTextColor(COL_CLOCK);
-    matrix.setCursor(10, 20);
+    matrix.setCursor(10, 17);
     if (menuIsClockItem()) {
       matrix.print(menuClockLabel());
     } else {
@@ -1497,25 +1508,25 @@ void drawMatrix() {
     return;
   }
 
-  // Top: home score | P#/TO/IN/HT | away score
-  drawDigitPair(1, 1, homeScore, COL_HOME);
-  drawDigitPair(45, 1, awayScore, COL_AWAY);
+  // Top: home score | P#/TO/IN/HT | away score (same size-1 font)
+  drawDigitPair(4, 1, homeScore, COL_HOME);
+  drawDigitPair(49, 1, awayScore, COL_AWAY);
 
   matrix.setTextSize(1);
   matrix.setTextColor(COL_LABEL);
   if (inTimeout()) {
-    matrix.setCursor(26, 3);
+    matrix.setCursor(26, 1);
     matrix.print("TO");
   } else if (inInterval()) {
-    matrix.setCursor(26, 3);
+    matrix.setCursor(26, 1);
     matrix.print(intervalIsHalfTime ? "HT" : "IN");
   } else {
-    matrix.setCursor(26, 3);
+    matrix.setCursor(26, 1);
     matrix.print('P');
     matrix.print(periodNum);
   }
 
-  // Middle: large main clock
+  // Middle: large main clock (rows 10–23)
   int mainSec = secondsLeft;
   if (inTimeout()) mainSec = timeoutLeft;
   else if (inInterval()) mainSec = intervalLeft;
@@ -1523,37 +1534,37 @@ void drawMatrix() {
   formatTime(mainSec, tbuf);
   matrix.setTextSize(2);
   matrix.setTextColor(mainClockColor(mainSec));
-  matrix.setCursor(10, 12);
+  matrix.setCursor(10, 10);
   matrix.print(tbuf);
 
-  // Bottom left: shot (red)
+  // Bottom left: shot (red) — rows 25–31, below the clock
   char sbuf[3];
   sprintf(sbuf, "%02d", shotLeft);
   uint16_t shotColor = matrix.Color333(MATRIX_BRIGHT, 0, 0);
   if (shotLeft == 0 && ((millis() / 400) & 1)) shotColor = COL_DIM;
   matrix.setTextSize(1);
   matrix.setTextColor(shotColor);
-  matrix.setCursor(1, 24);
+  matrix.setCursor(1, 25);
   matrix.print(sbuf);
 
   if (inTimeout()) {
     formatTime(secondsLeft, tbuf);
     matrix.setTextColor(COL_CLOCK);
-    matrix.setCursor(38, 24);
+    matrix.setCursor(38, 25);
     matrix.print(tbuf);
   } else if (!inTimeout()) {
     if (excl1Left > 0) {
       char e1[3];
       sprintf(e1, "%02d", excl1Left);
       matrix.setTextColor(COL_EXCL);
-      matrix.setCursor(20, 24);
+      matrix.setCursor(20, 25);
       matrix.print(e1);
     }
     if (excl2Left > 0) {
       char e2[3];
       sprintf(e2, "%02d", excl2Left);
       matrix.setTextColor(COL_EXCL);
-      matrix.setCursor(28, 24);
+      matrix.setCursor(35, 25);
       matrix.print(e2);
     }
   }
@@ -1563,4 +1574,3 @@ void drawMatrix() {
     matrix.swapBuffers(false);
   }
 }
-#endif
