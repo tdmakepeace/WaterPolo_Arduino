@@ -23,25 +23,27 @@ Also summarised in the main [README — How to use](../README.md#how-to-use).
 LCD example:
 
 ```text
-SET PERIOD  1/5
+SET PERIOD  1/7
 8:00  S/S next *
 ```
 
-Last page shows `S/S OK` instead of `S/S next`. The `*` is a brief command-ack flash.
+Shot-clock pages show seconds (e.g. `28s`) instead of `m:ss`. Last page shows `S/S OK` instead of `S/S next`. The `*` is a brief command-ack flash.
 
 ---
 
-## Menu pages (1 → 5)
+## Menu pages (1 → 7)
 
 | # | Page | Default | Range | Adjust with **GAME +1s / −1s** |
 |---|------|---------|-------|--------------------------------|
-| 1/5 | **PERIOD** | 8:00 | 0:30–15:00 | ±**30 s** per press |
-| 2/5 | **INTERVAL** | 2:00 | 0:00–3:00 | ±**30 s** |
-| 3/5 | **HALFTIME** | 2:00 | 0:00–7:00 | ±**30 s** |
-| 4/5 | **TIMEOUT** | 1:00 | 0:30–5:00 | ±**30 s** |
-| 5/5 | **CLOCK** | **STOP** | STOP or RUN | Toggle **STOP ↔ RUN** (no time step) |
+| 1/7 | **PERIOD** | 8:00 | 0:30–15:00 | ±**30 s** per press |
+| 2/7 | **INTERVAL** | 2:00 | 0:00–3:00 | ±**30 s** |
+| 3/7 | **HALFTIME** | 2:00 | 0:00–7:00 | ±**30 s** |
+| 4/7 | **TIMEOUT** | 1:00 | 0:30–5:00 | ±**30 s** |
+| 5/7 | **SHOT 28** | 28 s | 1–60 s | ±**1 s** |
+| 6/7 | **SHOT 18** | 18 s | 1–60 s | ±**1 s** |
+| 7/7 | **CLOCK** | **STOP** | STOP or RUN | Toggle **STOP ↔ RUN** (no time step) |
 
-Long-press on **GAME +1s / −1s** is not used in the menu — each press steps once (±30 s, or toggles CLOCK).
+Long-press on **GAME +1s / −1s** is not used in the menu — each press steps once (±30 s, ±1 s on shot pages, or toggles CLOCK).
 
 ---
 
@@ -69,6 +71,16 @@ Break length after **P2** (display label **HT**). Official half-time is often 5:
 
 Length of a team timeout when you press **TIMEOUT** (display label **TO**).
 
+### SHOT 28
+
+Length loaded by **28s RESET**, a goal (**+ HOME** / **+ AWAY**), **INTERVAL**, and shot-clock expiry. Live shot **+1s / −1s** also cannot go above this value.
+
+If the live shot is already at the old **SHOT 28** length (or longer than the new value), changing this page updates the live shot clock to match.
+
+### SHOT 18
+
+Length loaded by **18s RESET** (only if the current shot is **shorter** than this value) and **FORCE 18**. **EXCL** uses the same rule when the shot is shorter than this value.
+
 ### CLOCK
 
 Chooses how **START/STOP** behaves during play:
@@ -92,8 +104,10 @@ Full button guides:
 3. Press **S/S** → set **INTERVAL**.
 4. Press **S/S** → set **HALFTIME**.
 5. Press **S/S** → set **TIMEOUT**.
-6. Press **S/S** → set **CLOCK** to **STOP** or **RUN**.
-7. Press **S/S** (**OK**) to leave, or press **RETURN** at any time.
+6. Press **S/S** → set **SHOT 28** (e.g. 28 or 30).
+7. Press **S/S** → set **SHOT 18** (e.g. 18 or 20).
+8. Press **S/S** → set **CLOCK** to **STOP** or **RUN**.
+9. Press **S/S** (**OK**) to leave, or press **RETURN** at any time.
 
 ---
 

@@ -55,7 +55,7 @@ Operator scoreboard for water polo: **period clock**, **home/away scores**, and 
 - Hold **D2** ~3 s → STOP mode (from stopped): reload period to match length · RUN mode: stop the period  
 - Hold **D2 + D35** ~**3 s** → reload period to match length; **keep** shot + exclusions  
 - Hold **D2 + D6** together for **3 s** → **full reset** (scores 0–0, period **P1** 8:00, shot 28, clear TO/IN/HT/exclusions, clocks stopped; timing values + **CLOCK** back to defaults)
-- Hold **D5 + D6** ~**3 s** → **timing menu** (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK; **D36**/**D37** ±30 s or CLOCK toggle, **S/S** next/confirm, **D35** exit)  
+- Hold **D5 + D6** ~**3 s** → **timing menu** (PERIOD → INTERVAL → HALFTIME → TIMEOUT → SHOT 28 → SHOT 18 → CLOCK; **D36**/**D37** ±30 s, shot pages ±1 s, or CLOCK toggle, **S/S** next/confirm, **D35** exit)  
 - Operator detail: [timing menu](docs/user_guide_timing_menu.md) · [STOP mode](docs/user_guide_stop_mode.md) · [RUN mode](docs/user_guide_run_mode.md)  
 - Shot clock counts while **play** is active (in STOP mode that matches the period; in RUN mode period may keep running alone)  
 - If period remaining is **less than** the shot clock, the shot shows the period seconds (matrix / LCD / LoRa)  
@@ -76,7 +76,7 @@ This is the operator overview for the control panel (button box + LCD). Full but
 
 | Guide | Contents |
 |-------|----------|
-| [Timing menu](docs/user_guide_timing_menu.md) | Open/leave menu; PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK |
+| [Timing menu](docs/user_guide_timing_menu.md) | Open/leave menu; PERIOD / INTERVAL / HALFTIME / TIMEOUT / SHOT 28 / SHOT 18 / CLOCK |
 | [STOP mode (Start/Stop)](docs/user_guide_stop_mode.md) | Every button when **CLOCK = STOP** (default) |
 | [RUN mode](docs/user_guide_run_mode.md) | Every button when **CLOCK = RUN** (running period clock) |
 
@@ -155,10 +155,13 @@ In **RUN** mode a goal still resets the shot and clears exclusions, but the **pe
 
 | Button             | Result (STOP mode)                                                                |
 | ------------------ | --------------------------------------------------------------------------------- |
-| **28s RESET**      | Shot → **28**; run state unchanged; **clears both exclusion clocks**              |
-| **18s RESET**      | Shot → **18** only if current value is **< 18**; run state unchanged              |
-| **FORCE 18**       | Shot → **18** always; **stops** period + play                                     |
-| Shot reaches **0** | Horn/relay (~0.5 s); remote buzzers; **clocks stop**; shot reloads to **28**      |
+| **28s RESET**      | Shot → **SHOT 28** length (default 28); run state unchanged; **clears both exclusion clocks** |
+| **18s RESET**      | Shot → **SHOT 18** length (default 18) only if current value is **shorter**; run state unchanged |
+| **FORCE 18**       | Shot → **SHOT 18** length always; **stops** period + play                         |
+| Shot reaches **0** | Horn/relay (~0.5 s); remote buzzers; **clocks stop**; shot reloads to **SHOT 28** |
+
+
+Lengths for **28s RESET** / **18s RESET** / **FORCE 18** are set on the timing-menu **SHOT 28** and **SHOT 18** pages.
 
 
 In **RUN** mode, **FORCE 18** and shot expiry stop **play** only — the period keeps running.
@@ -200,7 +203,7 @@ Notes:
 - A **goal** (**+ HOME** / **+ AWAY**) or **28s RESET** clears **both** exclusion clocks.
 - Press **START/STOP** to resume play (and continue the exclusion countdown).
 
-### Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)
+### Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / SHOT 28 / SHOT 18 / CLOCK)
 
 Hold **18s RESET** and **28s RESET** for ~**3 s**. Clocks freeze while the menu is open. Values are kept until a **full reset** (not stored in EEPROM).
 
@@ -208,21 +211,23 @@ Full detail: [docs/user_guide_timing_menu.md](docs/user_guide_timing_menu.md)
 
 | Order | Item | Default | Range |
 |-------|------|---------|-------|
-| 1/5 | **PERIOD** | 8:00 | 0:30–15:00 (±30 s) |
-| 2/5 | **INTERVAL** | 2:00 | 0:00–3:00 (±30 s) |
-| 3/5 | **HALFTIME** | 2:00 | 0:00–7:00 (±30 s) |
-| 4/5 | **TIMEOUT** | 1:00 | 0:30–5:00 (±30 s) |
-| 5/5 | **CLOCK** | **STOP** | **STOP** or **RUN** (toggle) |
+| 1/7 | **PERIOD** | 8:00 | 0:30–15:00 (±30 s) |
+| 2/7 | **INTERVAL** | 2:00 | 0:00–3:00 (±30 s) |
+| 3/7 | **HALFTIME** | 2:00 | 0:00–7:00 (±30 s) |
+| 4/7 | **TIMEOUT** | 1:00 | 0:30–5:00 (±30 s) |
+| 5/7 | **SHOT 28** | 28 s | 1–60 s (±1 s) |
+| 6/7 | **SHOT 18** | 18 s | 1–60 s (±1 s) |
+| 7/7 | **CLOCK** | **STOP** | **STOP** or **RUN** (toggle) |
 
 | Button | In menu |
 |--------|---------|
-| Game **+1s** / **−1s** | Current time **±30 s**, or toggle **CLOCK** STOP ↔ RUN |
+| Game **+1s** / **−1s** | Current time **±30 s**, shot pages **±1 s**, or toggle **CLOCK** STOP ↔ RUN |
 | **START/STOP** (LCD shows **S/S**) | Next item; on **CLOCK** confirm and **exit** |
 | **RETURN** | Exit immediately (keeps changes already made) |
 
-LCD: `SET PERIOD  1/5` / `8:00  S/S next`. Last page shows `S/S OK`. Other buttons are ignored until you leave the menu.
+LCD: `SET PERIOD  1/7` / `8:00  S/S next`. Shot pages show `28s` / `18s`. Last page shows `S/S OK`. Other buttons are ignored until you leave the menu.
 
-If the current period has not been started yet, changing **PERIOD** also updates the live period clock.
+If the current period has not been started yet, changing **PERIOD** also updates the live period clock. **SHOT 28** / **SHOT 18** set the lengths used by **28s RESET**, **18s RESET**, **FORCE 18**, goals, interval, and shot expiry.
 
 ### Fine adjust (GAME CLOCK / SHOT CLOCK ±1s)
 
@@ -236,7 +241,7 @@ Use these to correct time without starting or stopping play yourself (they do no
 | Shot **+1s** / **−1s** | Shot ±1 s   | Shot ±10 s          |
 
 
-Limits: period **0:00–15:00** (live ±1 s; match length comes from the timing menu / pre-START trim), shot **0–28**. Period adjust only works in play mode (not during TO/IN). If you adjust period to **0:00**, the clocks stop.
+Limits: period **0:00–15:00** (live ±1 s; match length comes from the timing menu / pre-START trim), shot **0** to the current **SHOT 28** value. Period adjust only works in play mode (not during TO/IN). If you adjust period to **0:00**, the clocks stop.
 
 If you change the period clock **before the first START** of the current period, that value becomes the **match length** used for later periods.
 
@@ -246,7 +251,7 @@ Hold **START/STOP** and **28s RESET** together for **~3 s**:
 
 - Scores → **0–0**
 - Period → **P1** **8:00**, shot → **28**
-- Timing lengths → defaults (period **8:00**, interval **2:00**, half-time **2:00**, timeout **1:00**)
+- Timing lengths → defaults (period **8:00**, interval **2:00**, half-time **2:00**, timeout **1:00**, shot **28** / **18**)
 - **CLOCK** → **STOP**
 - Clears timeout / interval / half-time / exclusions / timing menu
 - Clocks stopped
@@ -279,10 +284,10 @@ For the **RUN** mode workflow, see [docs/user_guide_run_mode.md](docs/user_guide
 | **INTERVAL**            | Next period + IN/HT break (fresh match length / 28; exclusions kept) |
 | **RETURN**              | Leave TO/IN/HT / menu; long ≈ buzz; with S/S ≈ period reload     |
 | **EXCL**                | 18 s exclusion timers (press 1 → clock 1, press 2 → clock 2)     |
-| Game **+1s**            | Period +1 s (hold **+10 s**); in timing menu **+30 s** / CLOCK toggle |
-| Game **−1s**            | Period −1 s (hold **−30 s**); in timing menu **−30 s** / CLOCK toggle |
+| Game **+1s**            | Period +1 s (hold **+10 s**); in timing menu **+30 s** / shot pages **+1 s** / CLOCK toggle |
+| Game **−1s**            | Period −1 s (hold **−30 s**); in timing menu **−30 s** / shot pages **−1 s** / CLOCK toggle |
 | Shot **±1s**            | Shot ±1 s (hold ±10 s)                                           |
-| Hold **18s + 28s** ~3 s | Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / CLOCK)     |
+| Hold **18s + 28s** ~3 s | Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / SHOT 28 / SHOT 18 / CLOCK) |
 | Hold **S/S + 28s** ~3 s | Full game reset                                                  |
 | Hold **S/S + RETURN** ~3 s | Reload period length; keep shot + exclusions                  |
 

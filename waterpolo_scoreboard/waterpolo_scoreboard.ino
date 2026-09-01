@@ -24,8 +24,8 @@
  *   D35 = RETURN — short: end TO/IN early (no horn); long ~3 s: end TO/IN with
  *         buzzer (relay + LoRa). Not in TO/IN: long press is buzzer only.
  *         Also exits the timing menu.
- *   D36 = period +1 s (long press +10 s); in timing menu +30 s
- *   D37 = period -1 s (long press -30 s); in timing menu -30 s
+ *   D36 = period +1 s (long press +10 s); in timing menu +30 s (shot pages ±1 s)
+ *   D37 = period -1 s (long press -30 s); in timing menu -30 s (shot pages ±1 s)
  *   D38 = shot +1 s (long press +10 s)
  *   D39 = shot -1 s (long press -10 s)
  *   D40 = home score +  (also stops period clock, shot → 28, clears exclusions)
@@ -56,8 +56,10 @@
  * Hold D2 ~3 s (RUN mode): stops the period clock (and play).
  * Hold D2 + D35 ~3 s: reload period to match length; keeps shot + exclusions.
  * Hold D2 + D6 together for 3 s: full reset (scores, clocks, exclusions → defaults).
- * Hold D5 + D6 ~3 s: timing menu (PERIOD → INTERVAL → HALFTIME → TIMEOUT → CLOCK).
- *   D36 / D37 = ±30 s (CLOCK page: toggle STOP/RUN) · D2 = next / confirm · D35 exit.
+ * Hold D5 + D6 ~3 s: timing menu (PERIOD → INTERVAL → HALFTIME → TIMEOUT →
+ *   SHOT 28 → SHOT 18 → CLOCK).
+ *   D36 / D37 = ±30 s, shot pages ±1 s, CLOCK page: toggle STOP/RUN.
+ *   D2 = next / confirm · D35 exit.
  * D35 short: silent return from TO/IN. Hold D35 ~3 s: buzzer; also returns if in TO/IN.
  *
  * CLOCK menu: STOP (default) = D2 toggles period + shot + exclusions together.
@@ -269,8 +271,8 @@ const int INTERVAL_SECONDS   = 2 * 60;       // default between P1–P2 and P3�
 const int HALF_TIME_SECONDS  = 2 * 60;       // default after P2 (official half-time is 5:00)
 const int TIMEOUT_SECONDS    = 60;           // default timeout
 const int PERIOD_MAX         = 4;            // P1–P4
-const int SHOT_FULL          = 28;
-const int SHOT_PARTIAL       = 18;
+const int SHOT_FULL          = 28;           // default 28s RESET length
+const int SHOT_PARTIAL       = 18;           // default 18s RESET / FORCE 18
 const int EXCLUSION_SECONDS  = 18;
 
 const int MENU_STEP_SECONDS    = 30;
@@ -282,7 +284,16 @@ const int HALF_TIME_MENU_MIN   = 0;
 const int HALF_TIME_MENU_MAX   = 7 * 60;
 const int TIMEOUT_MENU_MIN     = 30;
 const int TIMEOUT_MENU_MAX     = 5 * 60;
-const uint8_t MENU_ITEM_COUNT  = 5;
+const int SHOT_MENU_MIN        = 1;
+const int SHOT_MENU_MAX        = 60;
+const uint8_t MENU_ITEM_PERIOD    = 0;
+const uint8_t MENU_ITEM_INTERVAL  = 1;
+const uint8_t MENU_ITEM_HALFTIME = 2;
+const uint8_t MENU_ITEM_TIMEOUT   = 3;
+const uint8_t MENU_ITEM_SHOT28    = 4;
+const uint8_t MENU_ITEM_SHOT18    = 5;
+const uint8_t MENU_ITEM_CLOCK     = 6;
+const uint8_t MENU_ITEM_COUNT     = 7;
 
 int homeScore = 0;
 int awayScore = 0;
@@ -291,6 +302,8 @@ int periodLength = PERIOD_SECONDS;  // carried match length (set before first ST
 int intervalLength = INTERVAL_SECONDS;
 int halfTimeLength = HALF_TIME_SECONDS;
 int timeoutLength = TIMEOUT_SECONDS;
+int shotFull = SHOT_FULL;          // 28s RESET / goal / expiry reload
+int shotPartial = SHOT_PARTIAL;    // 18s RESET (if shorter) / FORCE 18
 int secondsLeft = PERIOD_SECONDS;
 int shotLeft = SHOT_FULL;
 int timeoutLeft = 0;       // >0 = timeout mode
@@ -333,6 +346,7 @@ void stopPlayClocks();
 void startPlayClocks(uint32_t now);
 void toggleClockToggle(uint32_t now);
 bool menuIsClockItem();
+bool menuIsShotItem();
 void toggleClockMode();
 const char *menuClockLabel();
 
@@ -437,7 +451,7 @@ void applyAdjust(uint8_t pin, int deltaSec) {
     syncShotWithPeriod();
     ackCommand();
   } else if (pin == PIN_SHOT_INC || pin == PIN_SHOT_DEC) {
-    setShotClock(constrain(shotLeft + deltaSec, 0, SHOT_FULL));
+    setShotClock(constrain(shotLeft + deltaSec, 0, shotFull));
     ackCommand();
   }
 }
@@ -510,7 +524,11 @@ void toggleClockToggle(uint32_t now) {
 }
 
 bool menuIsClockItem() {
-  return menuItem == 4;
+  return menuItem == MENU_ITEM_CLOCK;
+}
+
+bool menuIsShotItem() {
+  return menuItem == MENU_ITEM_SHOT28 || menuItem == MENU_ITEM_SHOT18;
 }
 
 void toggleClockMode() {
@@ -532,6 +550,8 @@ void fullResetToDefaults() {
   intervalLength = INTERVAL_SECONDS;
   halfTimeLength = HALF_TIME_SECONDS;
   timeoutLength = TIMEOUT_SECONDS;
+  shotFull = SHOT_FULL;
+  shotPartial = SHOT_PARTIAL;
   periodStarted = false;
   secondsLeft = PERIOD_SECONDS;
   timeoutLeft = 0;
@@ -539,7 +559,7 @@ void fullResetToDefaults() {
   intervalIsHalfTime = false;
   inSettingsMenu = false;
   clearExclusions();
-  setShotClock(SHOT_FULL);
+  setShotClock(shotFull);
   pulseRelay(RELAY_TO_MS);
   ackCommand();
 }
@@ -729,7 +749,7 @@ void onShotExpired() {
   forwardToLoRa("0");
   forwardToLoRa("BUZZER");
 
-  shotLeft = SHOT_FULL;
+  shotLeft = shotFull;
   sendShotToLoRa(shotLeft, true);
   markDirty();
 }
@@ -751,7 +771,7 @@ void startInterval() {
   if (periodNum < PERIOD_MAX) periodNum++;
   secondsLeft = periodLength;
   periodStarted = false;
-  setShotClock(SHOT_FULL);
+  setShotClock(shotFull);
   // Keep remaining exclusion time — it resumes when the next period starts
   intervalLeft = breakSec;
   lastTickMs = millis();
@@ -785,41 +805,50 @@ bool startNextExclusion() {
 
 int *menuValueSlot() {
   switch (menuItem) {
-    case 0:  return &periodLength;
-    case 1:  return &intervalLength;
-    case 2:  return &halfTimeLength;
-    default: return &timeoutLength;
+    case MENU_ITEM_PERIOD:    return &periodLength;
+    case MENU_ITEM_INTERVAL:  return &intervalLength;
+    case MENU_ITEM_HALFTIME: return &halfTimeLength;
+    case MENU_ITEM_TIMEOUT:   return &timeoutLength;
+    case MENU_ITEM_SHOT28:    return &shotFull;
+    case MENU_ITEM_SHOT18:    return &shotPartial;
+    default:                  return &timeoutLength;
   }
 }
 
 void menuValueBounds(int *lo, int *hi) {
   switch (menuItem) {
-    case 0:
+    case MENU_ITEM_PERIOD:
       *lo = PERIOD_MENU_MIN;
       *hi = PERIOD_MENU_MAX;
       break;
-    case 1:
+    case MENU_ITEM_INTERVAL:
       *lo = INTERVAL_MENU_MIN;
       *hi = INTERVAL_MENU_MAX;
       break;
-    case 2:
+    case MENU_ITEM_HALFTIME:
       *lo = HALF_TIME_MENU_MIN;
       *hi = HALF_TIME_MENU_MAX;
       break;
-    default:
+    case MENU_ITEM_TIMEOUT:
       *lo = TIMEOUT_MENU_MIN;
       *hi = TIMEOUT_MENU_MAX;
+      break;
+    default:
+      *lo = SHOT_MENU_MIN;
+      *hi = SHOT_MENU_MAX;
       break;
   }
 }
 
 const char *menuItemName() {
   switch (menuItem) {
-    case 0:  return "PERIOD";
-    case 1:  return "INTERVAL";
-    case 2:  return "HALFTIME";
-    case 3:  return "TIMEOUT";
-    default: return "CLOCK";
+    case MENU_ITEM_PERIOD:    return "PERIOD";
+    case MENU_ITEM_INTERVAL:  return "INTERVAL";
+    case MENU_ITEM_HALFTIME: return "HALFTIME";
+    case MENU_ITEM_TIMEOUT:   return "TIMEOUT";
+    case MENU_ITEM_SHOT28:    return "SHOT 28";
+    case MENU_ITEM_SHOT18:    return "SHOT 18";
+    default:                  return "CLOCK";
   }
 }
 
@@ -852,10 +881,16 @@ void adjustMenuValue(int delta) {
   int lo, hi;
   menuValueBounds(&lo, &hi);
   int *slot = menuValueSlot();
+  int prev = *slot;
   *slot = constrain(*slot + delta, lo, hi);
-  if (menuItem == 0 && !periodStarted) {
+  if (menuItem == MENU_ITEM_PERIOD && !periodStarted) {
     secondsLeft = periodLength;
     syncShotWithPeriod();
+  }
+  if (menuItem == MENU_ITEM_SHOT28) {
+    if (shotLeft >= prev || shotLeft > shotFull) {
+      setShotClock(shotFull);
+    }
   }
   ackCommand();
 }
@@ -1046,6 +1081,8 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       case PIN_PERIOD_DEC:
         if (menuIsClockItem()) {
           toggleClockMode();
+        } else if (menuIsShotItem()) {
+          adjustMenuValue((pin == PIN_PERIOD_INC) ? 1 : -1);
         } else if (pin == PIN_PERIOD_INC) {
           adjustMenuValue(MENU_STEP_SECONDS);
         } else {
@@ -1108,14 +1145,14 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       homeScore = min(99, homeScore + 1);
       stopPlayClocks();
       clearExclusions();
-      setShotClock(SHOT_FULL);
+      setShotClock(shotFull);
       ackCommand();
       break;
     case PIN_AWAY_INC:
       awayScore = min(99, awayScore + 1);
       stopPlayClocks();
       clearExclusions();
-      setShotClock(SHOT_FULL);
+      setShotClock(shotFull);
       ackCommand();
       break;
     case PIN_HOME_DEC:
@@ -1171,7 +1208,7 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       break;
     case PIN_SHOT_FORCE18:
       stopPlayClocks();
-      setShotClock(SHOT_PARTIAL);
+      setShotClock(shotPartial);
       ackCommand();
       break;
     case PIN_RETURN:
@@ -1188,8 +1225,8 @@ void onButtonPress(uint8_t pin, uint32_t now) {
     case PIN_EXCL:
       if (!startNextExclusion()) break;
       stopPlayClocks();
-      if (shotLeft < SHOT_PARTIAL) {
-        setShotClock(SHOT_PARTIAL);
+      if (shotLeft < shotPartial) {
+        setShotClock(shotPartial);
       }
       ackCommand();
       break;
@@ -1241,7 +1278,7 @@ void onButtonRelease(uint8_t pin, uint32_t now) {
     if (pendingShot28 && !buttonIsDown(PIN_CLOCK_TOGGLE) && !comboResetHandled &&
         !menuComboHandled) {
       bool wasRunning = clockRunning;
-      setShotClock(SHOT_FULL);
+      setShotClock(shotFull);
       clockRunning = wasRunning;
       clearExclusions();
       ignoreClockToggleUntilMs = now + SHOT_BTN_CLOCK_GUARD_MS;
@@ -1252,9 +1289,9 @@ void onButtonRelease(uint8_t pin, uint32_t now) {
   }
   if (pin == PIN_SHOT_18) {
     if (pendingShot18 && !menuComboHandled) {
-      if (shotLeft < SHOT_PARTIAL) {
+      if (shotLeft < shotPartial) {
         bool wasRunning = clockRunning;
-        setShotClock(SHOT_PARTIAL);
+        setShotClock(shotPartial);
         clockRunning = wasRunning;
         ignoreClockToggleUntilMs = now + SHOT_BTN_CLOCK_GUARD_MS;
         ackCommand();
@@ -1398,6 +1435,8 @@ void drawLcd() {
 
     if (menuIsClockItem()) {
       snprintf(tbuf, sizeof(tbuf), "%s", menuClockLabel());
+    } else if (menuIsShotItem()) {
+      snprintf(tbuf, sizeof(tbuf), "%ds", menuItemValue());
     } else {
       formatTime(menuItemValue(), tbuf);
     }
@@ -1497,6 +1536,9 @@ void drawMatrix() {
     matrix.setCursor(10, 17);
     if (menuIsClockItem()) {
       matrix.print(menuClockLabel());
+    } else if (menuIsShotItem()) {
+      matrix.print(menuItemValue());
+      matrix.print('s');
     } else {
       char tbuf[8];
       formatTime(menuItemValue(), tbuf);
