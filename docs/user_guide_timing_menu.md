@@ -41,9 +41,9 @@ Shot-clock pages show seconds (e.g. `28s`) instead of `m:ss`. Last page shows `S
 | 4/7 | **TIMEOUT** | 1:00 | 0:30–5:00 | ±**30 s** |
 | 5/7 | **SHOT 28** | 28 s | 1–60 s | ±**1 s** |
 | 6/7 | **SHOT 18** | 18 s | 1–60 s | ±**1 s** |
-| 7/7 | **CLOCK** | **STOP** | STOP or RUN | Toggle **STOP ↔ RUN** (no time step) |
+| 7/7 | **CLOCK** | **STOP** | STOP, RUN, or RUN-NS | Cycle **STOP → RUN → RUN-NS** (no time step) |
 
-Long-press on **GAME +1s / −1s** is not used in the menu — each press steps once (±30 s, ±1 s on shot pages, or toggles CLOCK).
+Long-press on **GAME +1s / −1s** is not used in the menu — each press steps once (±30 s, ±1 s on shot pages, or cycles CLOCK).
 
 ---
 
@@ -89,11 +89,12 @@ Chooses how **START/STOP** behaves during play:
 |---------|---------|
 | **STOP** (default) | Start/Stop mode: period, shot, and exclusions start and stop together. |
 | **RUN** | Running-clock mode: after the period is live, short **START/STOP** only starts/stops shot + exclusions; the period keeps counting until you stop it with a long press (or timeout / interval / period end). |
+| **RUN-NS** | Same period behaviour as **RUN**, but the shot clock is **disabled**: hidden on the LCD/matrix, blanked on LoRa remotes, and shot buttons are ignored. Exclusions count down with the **period** clock. |
 
 Full button guides:
 
 - [STOP mode](user_guide_stop_mode.md)
-- [RUN mode](user_guide_run_mode.md)
+- [RUN mode](user_guide_run_mode.md) (covers **RUN** and **RUN-NS**)
 
 ---
 
@@ -106,7 +107,7 @@ Full button guides:
 5. Press **S/S** → set **TIMEOUT**.
 6. Press **S/S** → set **SHOT 28** (e.g. 28 or 30).
 7. Press **S/S** → set **SHOT 18** (e.g. 18 or 20).
-8. Press **S/S** → set **CLOCK** to **STOP** or **RUN**.
+8. Press **S/S** → set **CLOCK** to **STOP**, **RUN**, or **RUN-NS**.
 9. Press **S/S** (**OK**) to leave, or press **RETURN** at any time.
 
 ---

@@ -42,7 +42,7 @@
  * (and follows) the period remaining — including when PERIOD_SECONDS /
  * match length is shorter than a full shot (e.g. 28 s).
  * At shot = 0: LoRa BUZZER, stop play (period keeps in RUN mode), reset shot to 28 s.
- * Exclusions tick only during play (pause in TO/IN; in RUN mode period may still run).
+ * Exclusions: STOP and RUN follow shot/play; RUN-NS follows the period clock.
  * Remaining exclusion time is kept across INTERVAL / half-time into the next period.
  * A goal (home+ / away+) or D6 (shot → 28) clears both exclusion clocks.
  * Period counter P1–P4 advances on INTERVAL; half-time after P2 (display HT).
@@ -58,14 +58,15 @@
  * Hold D2 + D6 together for 3 s: full reset (scores, clocks, exclusions → defaults).
  * Hold D5 + D6 ~3 s: timing menu (PERIOD → INTERVAL → HALFTIME → TIMEOUT →
  *   SHOT 28 → SHOT 18 → CLOCK).
- *   D36 / D37 = ±30 s, shot pages ±1 s, CLOCK page: toggle STOP/RUN.
+ *   D36 / D37 = ±30 s, shot pages ±1 s, CLOCK page: cycle STOP/RUN/RUN-NS.
  *   D2 = next / confirm · D35 exit.
  * D35 short: silent return from TO/IN. Hold D35 ~3 s: buzzer; also returns if in TO/IN.
  *
  * CLOCK menu: STOP (default) = D2 toggles period + shot + exclusions together.
  * RUN = first D2 of quarter (or after timeout) starts period + play; later D2 toggles
  * shot + exclusions only while period keeps running (timeout still stops period).
- * Long D2 in RUN stops the period; D2+D35 reloads period length without clearing shot/excl.
+ * RUN-NS = same period behaviour as RUN but shot clock disabled (hidden, no tick/expiry).
+ * Long D2 in RUN/RUN-NS stops the period; D2+D35 reloads period length without clearing shot/excl.
  */
 
 #include <Wire.h>
@@ -311,9 +312,12 @@ int intervalLeft = 0;      // >0 = interval / half-time mode
 int excl1Left = 0;         // 0 = inactive; cannot restart while >0
 int excl2Left = 0;
 int lastShotSent = -1;
-bool clockRunning = false;     // play: shot + exclusions
+bool clockRunning = false;     // play: shot (exclusions follow period in RUN / RUN-NS)
 bool periodRunning = false;    // main period countdown (may run without play in RUN mode)
-bool runningClock = false;     // menu CLOCK setting: false=STOP, true=RUN
+const uint8_t CLOCK_MODE_STOP   = 0;
+const uint8_t CLOCK_MODE_RUN    = 1;
+const uint8_t CLOCK_MODE_RUN_NS = 2;
+uint8_t clockMode = CLOCK_MODE_STOP;  // menu CLOCK: STOP / RUN / RUN-NS
 bool intervalIsHalfTime = false;
 bool periodStarted = false;  // true after first START of current period
 
@@ -349,6 +353,9 @@ bool menuIsClockItem();
 bool menuIsShotItem();
 void toggleClockMode();
 const char *menuClockLabel();
+bool isRunningClock();
+bool shotClockEnabled();
+bool exclTicking();
 
 uint32_t lastTickMs = 0;
 uint32_t lastDrawMs = 0;
@@ -451,6 +458,7 @@ void applyAdjust(uint8_t pin, int deltaSec) {
     syncShotWithPeriod();
     ackCommand();
   } else if (pin == PIN_SHOT_INC || pin == PIN_SHOT_DEC) {
+    if (!shotClockEnabled()) return;
     setShotClock(constrain(shotLeft + deltaSec, 0, shotFull));
     ackCommand();
   }
@@ -488,9 +496,22 @@ void stopAllClocks() {
   periodRunning = false;
 }
 
+bool isRunningClock() {
+  return clockMode != CLOCK_MODE_STOP;
+}
+
+bool shotClockEnabled() {
+  return clockMode != CLOCK_MODE_RUN_NS;
+}
+
+bool exclTicking() {
+  // STOP + RUN: exclusions start/stop with shot/play; RUN-NS: with period
+  return clockMode == CLOCK_MODE_RUN_NS ? periodRunning : clockRunning;
+}
+
 void stopPlayClocks() {
   clockRunning = false;
-  if (!runningClock) {
+  if (!isRunningClock()) {
     periodRunning = false;
   }
 }
@@ -503,7 +524,7 @@ void startPlayClocks(uint32_t now) {
 }
 
 void toggleClockToggle(uint32_t now) {
-  if (!runningClock) {
+  if (!isRunningClock()) {
     if (clockRunning) {
       stopAllClocks();
     } else if (secondsLeft > 0) {
@@ -532,17 +553,27 @@ bool menuIsShotItem() {
 }
 
 void toggleClockMode() {
-  runningClock = !runningClock;
+  clockMode = (clockMode + 1) % 3;
+  if (shotClockEnabled()) {
+    sendShotToLoRa(shotLeft, true);
+  } else {
+    forwardToLoRa("0");
+    lastShotSent = 0;
+  }
   ackCommand();
 }
 
 const char *menuClockLabel() {
-  return runningClock ? "RUN" : "STOP";
+  switch (clockMode) {
+    case CLOCK_MODE_RUN:    return "RUN";
+    case CLOCK_MODE_RUN_NS: return "RUN-NS";
+    default:                return "STOP";
+  }
 }
 
 void fullResetToDefaults() {
   stopAllClocks();
-  runningClock = false;
+  clockMode = CLOCK_MODE_STOP;
   homeScore = 0;
   awayScore = 0;
   periodNum = 1;
@@ -713,6 +744,7 @@ void pollLoRaModuleEcho() {
 }
 
 void sendShotToLoRa(int value, bool force) {
+  if (!shotClockEnabled()) return;
   value = constrain(value, 0, 99);
   if (!force && value == lastShotSent) return;
 
@@ -726,6 +758,7 @@ void sendShotToLoRa(int value, bool force) {
 
 // In play mode, shot never exceeds period remaining (display + LoRa remotes).
 void syncShotWithPeriod() {
+  if (!shotClockEnabled()) return;
   if (inTimeout() || inInterval()) return;
   if (shotLeft <= secondsLeft) return;
   shotLeft = secondsLeft;
@@ -738,7 +771,9 @@ void setShotClock(int value) {
   if (inPlay() && shotLeft > secondsLeft) {
     shotLeft = secondsLeft;
   }
-  sendShotToLoRa(shotLeft, true);
+  if (shotClockEnabled()) {
+    sendShotToLoRa(shotLeft, true);
+  }
   markDirty();
 }
 
@@ -771,7 +806,9 @@ void startInterval() {
   if (periodNum < PERIOD_MAX) periodNum++;
   secondsLeft = periodLength;
   periodStarted = false;
-  setShotClock(shotFull);
+  if (shotClockEnabled()) {
+    setShotClock(shotFull);
+  }
   // Keep remaining exclusion time — it resumes when the next period starts
   intervalLeft = breakSec;
   lastTickMs = millis();
@@ -987,7 +1024,7 @@ void loop() {
   serviceLcdAck();
   pollButtons();
 
-  if (inPlay() && clockRunning &&
+  if (inPlay() && clockRunning && shotClockEnabled() &&
       (millis() - lastLoRaResendMs >= LORA_RESEND_MS)) {
     sendShotToLoRa(shotLeft, true);
   }
@@ -999,7 +1036,7 @@ void loop() {
     int mainSec = secondsLeft;
     if (inTimeout()) mainSec = timeoutLeft;
     else if (inInterval()) mainSec = intervalLeft;
-    needsBlink = (mainSec == 0) || (shotLeft == 0);
+    needsBlink = (mainSec == 0) || (shotClockEnabled() && shotLeft == 0);
   }
   if (displayDirty || (needsBlink && (millis() - lastDrawMs >= 400UL))) {
     drawMatrix();
@@ -1040,7 +1077,7 @@ void pollButtons() {
     // Skip if D6 or D35 also held — those are combo paths
     if (!inSettingsMenu && !buttonIsDown(PIN_SHOT_RESET) &&
         !buttonIsDown(PIN_RETURN) && inPlay()) {
-      if (runningClock) {
+      if (isRunningClock()) {
         // RUN: long press stops the period clock
         if (clockWasPeriodRunningAtPress || periodRunning) {
           stopAllClocks();
@@ -1127,7 +1164,7 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       clockPendingStartPlay = false;
       clockWasRunningAtPress = clockRunning;
       clockWasPeriodRunningAtPress = periodRunning;
-      if (runningClock && periodRunning) {
+      if (isRunningClock() && periodRunning) {
         // Period already live: stop play immediately if running; if play was
         // already stopped, defer start until release (so long press can stop period)
         if (clockRunning) {
@@ -1145,14 +1182,14 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       homeScore = min(99, homeScore + 1);
       stopPlayClocks();
       clearExclusions();
-      setShotClock(shotFull);
+      if (shotClockEnabled()) setShotClock(shotFull);
       ackCommand();
       break;
     case PIN_AWAY_INC:
       awayScore = min(99, awayScore + 1);
       stopPlayClocks();
       clearExclusions();
-      setShotClock(shotFull);
+      if (shotClockEnabled()) setShotClock(shotFull);
       ackCommand();
       break;
     case PIN_HOME_DEC:
@@ -1193,6 +1230,7 @@ void onButtonPress(uint8_t pin, uint32_t now) {
     case PIN_PERIOD_DEC:
     case PIN_SHOT_INC:
     case PIN_SHOT_DEC:
+      if ((pin == PIN_SHOT_INC || pin == PIN_SHOT_DEC) && !shotClockEnabled()) break;
       // Short = ±1 on release; long = ±10/±30 while held
       adjustPinDown = pin;
       adjustDownMs = now;
@@ -1207,6 +1245,7 @@ void onButtonPress(uint8_t pin, uint32_t now) {
       ackCommand();
       break;
     case PIN_SHOT_FORCE18:
+      if (!shotClockEnabled()) break;
       stopPlayClocks();
       setShotClock(shotPartial);
       ackCommand();
@@ -1225,7 +1264,7 @@ void onButtonPress(uint8_t pin, uint32_t now) {
     case PIN_EXCL:
       if (!startNextExclusion()) break;
       stopPlayClocks();
-      if (shotLeft < shotPartial) {
+      if (shotClockEnabled() && shotLeft < shotPartial) {
         setShotClock(shotPartial);
       }
       ackCommand();
@@ -1275,7 +1314,8 @@ void onButtonRelease(uint8_t pin, uint32_t now) {
   }
 
   if (pin == PIN_SHOT_RESET) {
-    if (pendingShot28 && !buttonIsDown(PIN_CLOCK_TOGGLE) && !comboResetHandled &&
+    if (pendingShot28 && shotClockEnabled() &&
+        !buttonIsDown(PIN_CLOCK_TOGGLE) && !comboResetHandled &&
         !menuComboHandled) {
       bool wasRunning = clockRunning;
       setShotClock(shotFull);
@@ -1288,7 +1328,7 @@ void onButtonRelease(uint8_t pin, uint32_t now) {
     return;
   }
   if (pin == PIN_SHOT_18) {
-    if (pendingShot18 && !menuComboHandled) {
+    if (pendingShot18 && shotClockEnabled() && !menuComboHandled) {
       if (shotLeft < shotPartial) {
         bool wasRunning = clockRunning;
         setShotClock(shotPartial);
@@ -1365,7 +1405,7 @@ void updateClocks() {
     }
   }
 
-  if (clockRunning && shotLeft > 0) {
+  if (clockRunning && shotClockEnabled() && shotLeft > 0) {
     int prev = shotLeft;
     shotLeft -= (int)elapsed;
     if (shotLeft <= 0) {
@@ -1381,13 +1421,13 @@ void updateClocks() {
   }
 
   // Period remaining shorter than shot → shot display follows period
-  if (periodRunning && shotLeft > secondsLeft) {
+  if (shotClockEnabled() && periodRunning && shotLeft > secondsLeft) {
     shotLeft = secondsLeft;
     sendShotToLoRa(shotLeft, true);
   }
 
-  // Exclusions follow play clock (not period-only in RUN mode)
-  if (clockRunning) {
+  // Exclusions: STOP/RUN = shot/play clock; RUN-NS = period clock
+  if (exclTicking()) {
     if (excl1Left > 0) {
       excl1Left -= (int)elapsed;
       if (excl1Left < 0) excl1Left = 0;
@@ -1443,8 +1483,11 @@ void drawLcd() {
     char ackCh = (lcdAckUntilMs != 0 && (int32_t)(millis() - lcdAckUntilMs) < 0)
                      ? '*'
                      : ' ';
-    snprintf(line, sizeof(line), "%-5s S/S %s %c", tbuf,
-             (menuItem + 1 >= MENU_ITEM_COUNT) ? "OK  " : "next", ackCh);
+    if (menuIsClockItem()) {
+      snprintf(line, sizeof(line), "%-6s S/S OK %c", tbuf, ackCh);
+    } else {
+      snprintf(line, sizeof(line), "%-5s S/S next %c", tbuf, ackCh);
+    }
     lcd.setCursor(0, 1);
     n = 0;
     for (; line[n] != '\0' && n < 16; n++) lcd.write(line[n]);
@@ -1480,12 +1523,16 @@ void drawLcd() {
   if (excl2Left > 0) snprintf(e2, sizeof(e2), "%02d", min(excl2Left, 99));
   else               snprintf(e2, sizeof(e2), "--");
 
-  char runCh = (inPlay() && clockRunning) ? '*' : ' ';
+  char runCh = (inPlay() && exclTicking()) ? '*' : ' ';
   char ackCh = (lcdAckUntilMs != 0 && (int32_t)(millis() - lcdAckUntilMs) < 0)
                    ? '*'
                    : ' ';
-  snprintf(line, sizeof(line), "S%02d%c E %s, %s  %c",
-           constrain(shotLeft, 0, 99), runCh, e1, e2, ackCh);
+  if (shotClockEnabled()) {
+    snprintf(line, sizeof(line), "S%02d%c E %s, %s  %c",
+             constrain(shotLeft, 0, 99), runCh, e1, e2, ackCh);
+  } else {
+    snprintf(line, sizeof(line), "   %c E %s, %s  %c", runCh, e1, e2, ackCh);
+  }
 
   lcd.setCursor(0, 1);
   n = 0;
@@ -1531,18 +1578,26 @@ void drawMatrix() {
     matrix.print(MENU_ITEM_COUNT);
     matrix.setCursor(1, 9);
     matrix.print(menuItemName());
-    matrix.setTextSize(2);
     matrix.setTextColor(COL_CLOCK);
     matrix.setCursor(10, 17);
     if (menuIsClockItem()) {
-      matrix.print(menuClockLabel());
-    } else if (menuIsShotItem()) {
-      matrix.print(menuItemValue());
-      matrix.print('s');
+      if (clockMode == CLOCK_MODE_RUN_NS) {
+        matrix.setTextSize(1);
+        matrix.print(menuClockLabel());
+      } else {
+        matrix.setTextSize(2);
+        matrix.print(menuClockLabel());
+      }
     } else {
-      char tbuf[8];
-      formatTime(menuItemValue(), tbuf);
-      matrix.print(tbuf);
+      matrix.setTextSize(2);
+      if (menuIsShotItem()) {
+        matrix.print(menuItemValue());
+        matrix.print('s');
+      } else {
+        char tbuf[8];
+        formatTime(menuItemValue(), tbuf);
+        matrix.print(tbuf);
+      }
     }
     if (MATRIX_DOUBLE_BUFFER) {
       matrix.swapBuffers(false);
@@ -1580,14 +1635,16 @@ void drawMatrix() {
   matrix.print(tbuf);
 
   // Bottom left: shot (red) — rows 25–31, below the clock
-  char sbuf[3];
-  sprintf(sbuf, "%02d", shotLeft);
-  uint16_t shotColor = matrix.Color333(MATRIX_BRIGHT, 0, 0);
-  if (shotLeft == 0 && ((millis() / 400) & 1)) shotColor = COL_DIM;
-  matrix.setTextSize(1);
-  matrix.setTextColor(shotColor);
-  matrix.setCursor(1, 25);
-  matrix.print(sbuf);
+  if (shotClockEnabled()) {
+    char sbuf[3];
+    sprintf(sbuf, "%02d", shotLeft);
+    uint16_t shotColor = matrix.Color333(MATRIX_BRIGHT, 0, 0);
+    if (shotLeft == 0 && ((millis() / 400) & 1)) shotColor = COL_DIM;
+    matrix.setTextSize(1);
+    matrix.setTextColor(shotColor);
+    matrix.setCursor(1, 25);
+    matrix.print(sbuf);
+  }
 
   if (inTimeout()) {
     formatTime(secondsLeft, tbuf);

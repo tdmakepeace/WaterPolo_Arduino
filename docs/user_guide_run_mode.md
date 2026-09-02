@@ -1,8 +1,10 @@
 # User guide — RUN mode (running clock)
 
-Use this guide when the timing menu **CLOCK** page is set to **RUN**.
+Use this guide when the timing menu **CLOCK** page is set to **RUN** or **RUN-NS**.
 
-In RUN mode the **period** can keep counting while **shot** and **exclusion** clocks are stopped (for goals, exclusions, shot expiry, etc.).
+In **RUN** mode the **period** can keep counting while the **shot** clock is stopped (for goals, exclusions, shot expiry, etc.). Exclusions start and stop with the **shot** clock — same as pressing **START/STOP** for play.
+
+**RUN-NS** uses the same period / **START/STOP** rules as **RUN**, but the shot clock is fully off (hidden on displays, blanked on LoRa remotes, shot buttons ignored). Exclusions count down with the **period** clock; the LCD `*` shows while the period is running.
 
 Related guides:
 
@@ -18,7 +20,9 @@ Also summarised in the main [README — How to use](../README.md#how-to-use).
 | Concept | Behaviour |
 |---------|-----------|
 | **Period running** | Main game clock is counting down. |
-| **Play running** | Shot + exclusions are counting (LCD `*` on). |
+| **Play running** | Shot + exclusions are counting (LCD `*` on). In **RUN-NS**, shot is disabled — `*` means the period is running. |
+| **Exclusions (RUN)** | Start/stop with **shot/play** (short **START/STOP**). Pause during TO/IN/HT. |
+| **Exclusions (RUN-NS)** | Count down with the **period** clock. Pause during TO/IN/HT. |
 | After first start of a quarter | Short **START/STOP** only toggles **play**. Period keeps going. |
 | To stop the period | **Long-press START/STOP** (~3 s), or call **TIMEOUT** / **INTERVAL**, or wait for 0:00. |
 
@@ -38,8 +42,8 @@ Timeout still **stops the period**. After **RETURN** from timeout, press **START
 ### Typical flow each quarter
 
 1. Short **START/STOP** → period and shot start.
-2. Goal / exclusion / shot expiry → play stops; **period keeps running**.
-3. Short **START/STOP** → shot (and exclusions) resume; period still running.
+2. Goal / exclusion / shot expiry → shot/play stops; **period keeps running** (exclusions pause in **RUN**, keep counting in **RUN-NS** except goals clear them).
+3. Short **START/STOP** → shot and exclusions resume (**RUN**); period still running.
 4. To freeze the whole quarter early → hold **START/STOP** ~3 s.
 
 ---
@@ -64,6 +68,8 @@ Timeout still **stops the period**. After **RETURN** from timeout, press **START
 
 ## Shot clock
 
+Applies when **CLOCK = RUN**. In **RUN-NS** the shot clock is disabled — skip this section.
+
 | Button / event | Period (RUN) | Play / shot |
 |----------------|--------------|-------------|
 | **28s RESET** | Unchanged | Shot → **28**; clear exclusions; **run state unchanged** (play stays running or stopped). |
@@ -77,13 +83,13 @@ When period remaining is less than the shot value **and the period is running**,
 
 ## Exclusions
 
-| Button | Period (RUN) | Play |
-|--------|--------------|------|
-| **EXCL** (1st / 2nd press) | **Keeps running** | Arm clock 1 then 2 (**18 s**). If shot &lt; 18, apply 18s rule. **Play stops**. |
+| Button | Period | Exclusions |
+|--------|--------|------------|
+| **EXCL** (1st / 2nd press) | **Keeps running** | Arm clock 1 then 2 (**18 s**). If shot &lt; 18 (and **CLOCK = RUN**), apply 18s rule. **Shot/play stops** — exclusions **pause** in **RUN** (resume with **START/STOP**); in **RUN-NS** they **keep counting** with the period. |
 
 Same slot rules as STOP mode: cannot restart an active clock; remaining time kept across IN/HT; goal or **28s RESET** clears both.
 
-Press **START/STOP** to resume play (period is usually still running).
+Press **START/STOP** to resume shot/play in **RUN** (period is usually still running). In **RUN-NS**, exclusions need no button — they follow the period.
 
 ---
 
@@ -115,7 +121,7 @@ Same controls as STOP mode:
 | Button | Short | Long (~0.8 s) |
 |--------|-------|---------------|
 | **GAME +1s / −1s** | Period ±1 s | +10 / −30 s |
-| **SHOT +1s / −1s** | Shot ±1 s | ±10 s |
+| **SHOT +1s / −1s** | Shot ±1 s (ignored in **RUN-NS**) | ±10 s |
 
 Period adjust only in play display (not during TO/IN). Adjusting period to **0:00** stops period + play.
 
@@ -148,7 +154,7 @@ Pre-first-START period edits still update match length for later quarters.
 | Control | Short | Long / hold | Combo |
 |---------|-------|-------------|-------|
 | **START/STOP** | Start period+play, or toggle play only | ~3 s → stop period | +**28s** full reset; +**RETURN** period reload keep shot/excl |
-| **+ HOME / + AWAY** | Goal; play stops; period keeps; shot 28; clear excl | — | — |
+| **+ HOME / + AWAY** | Goal; play stops; period keeps; shot 28 (ignored in **RUN-NS**); clear excl | — | — |
 | **− HOME / − AWAY** | Score −1 | — | — |
 | **28s RESET** | Shot 28; clear excl; run state kept | — | with **18s** → menu; with **S/S** → full reset |
 | **18s RESET** | Shot → 18 if &lt; 18 | — | with **28s** → menu |
