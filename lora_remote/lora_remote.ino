@@ -85,9 +85,6 @@ void setup() {
   scoreboardSetupPins();
 
   Serial.begin(9600);
-  while (!Serial) {
-  }
-
   Serial1.begin(LORA_BAUD);
   Serial1.setTimeout(50);
 

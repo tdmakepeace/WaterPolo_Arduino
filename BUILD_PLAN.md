@@ -15,7 +15,7 @@ Build an **operator scoreboard** for water polo on an **Arduino Mega 2560** that
 5. Two **18 s exclusion** timers
 6. Local displays: **Waveshare 64×32 RGB HUB75 matrix** + **Freenove I2C 16×2 LCD**
 7. A **5 V relay** horn/alarm on shot/period/TO expiry
-8. **LoRa UART** broadcast of shot-clock values to remote shot clocks (`lora_remote2` protocol)
+8. **LoRa UART** broadcast of shot-clock values to remote shot clocks (`lora_remote` protocol)
 
 ---
 
@@ -95,7 +95,7 @@ If images already exist, **reuse them** and reference them from README/USAGE. Do
 | 17 | Momentary push-buttons | Active LOW → GND, Mega INPUT_PULLUP |
 | 1 | 5 V relay module | Driven by **D12** |
 | 1 | LoRa UART module (TX) | e.g. DX-LR02 / DX-LR32 433 MHz |
-| 1+ | LoRa remote shot clocks | Firmware `lora_remote2` |
+| 1+ | LoRa remote shot clocks | Firmware `lora_remote/lora_remote.ino` |
 
 **Power rules:**
 
@@ -325,7 +325,7 @@ Timeout / interval / half-time: top centre becomes `TO` / `IN` / `HT`; large mid
 
 Colors (Color333 / bitbang equivalents):
 
-- Home white, Away blue (scores only — no H/A labels)
+- Home white, Away medium blue (scores only — no H/A labels)
 - Labels (`P#` / `TO` / `IN` / `HT`) orange
 - Main clock: white &gt;1:00, orange ≤1:00 down to 0:29, red ≤0:28 (blink at 0:00)
 - Shot always red
@@ -335,7 +335,7 @@ Always clear then draw (bitbang `clear` / Adafruit `fillScreen(0)` + `swapBuffer
 
 ---
 
-## LoRa protocol (compatible with `lora_remote2`)
+## LoRa protocol (compatible with `lora_remote`)
 
 | Item | Value |
 |------|--------|
@@ -436,7 +436,7 @@ Execute in this order:
 
 ## Non-goals / out of scope
 
-- Do **not** implement the LoRa remote firmware here (reference `lora_remote2` only).
+- LoRa remote firmware lives in `lora_remote/` (see `docs/lora_remote_build.md`). Do not fold it into the Mega sketch.
 - Do **not** target Arduino Uno / Nano (insufficient pins / wrong PORTA mapping).
 - Do **not** drive the matrix from Mega 5 V.
 - Do **not** replace HUB75 data pins 24–29 (Adafruit Mega requirement).

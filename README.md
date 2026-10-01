@@ -1,6 +1,6 @@
 # Water Polo Scoreboard (Arduino Mega)
 
-Operator scoreboard for water polo: **period clock**, **home/away scores**, and a **28 s shot clock**. The shot clock is shown on the local RGB matrix and 16×2 LCD, and is broadcast to external LoRa remote shot clocks (`lora_remote2`).
+Operator scoreboard for water polo: **period clock**, **home/away scores**, and a **28 s shot clock**. The shot clock is shown on the local RGB matrix and 16×2 LCD, and is broadcast to external LoRa remote shot clocks (`lora_remote`).
 
 ---
 
@@ -18,7 +18,7 @@ Operator scoreboard for water polo: **period clock**, **home/away scores**, and 
 | 16  | Momentary push-buttons                      | Score / clock / shot / TO / IN / Return / excl  |
 | 1   | **5 V relay module** (or 5 V coil + driver) | Driven by **D12**; switches horn / siren / lamp |
 | 1   | LoRa UART module (TX side)                  | e.g. DX-LR02 / DX-LR32 433 MHz class            |
-| 1+  | LoRa remote shot-clock units                | Running `lora_remote2.ino`                      |
+| 1+  | LoRa remote shot-clock units                | Sketch `lora_remote/lora_remote.ino`. Wiring: [docs/lora_remote_build.md](docs/lora_remote_build.md) |
 | —   | Dupont / jumper wires, breadboard or proto  | As needed                                       |
 | —   | USB cable (A–B)                             | Mega programming / optional 5 V for MCU only    |
 
@@ -297,7 +297,7 @@ For the **RUN** mode workflow, see [docs/user_guide_run_mode.md](docs/user_guide
 
 ## Libraries
 
-Matrix driver files are **vendored** in `waterpolo_scoreboard/` (copied from `test_waveshare/`): `RGBmatrixPanel`, `Adafruit_GFX`, `gamma.h`, `gfxfont.h`, `glcdfont.c`, `Fonts/fonts.h`. The sketch calls Waveshare `Reginit()` **before** `matrix.begin()`. You do not need the Library Manager Adafruit GFX / RGB matrix Panel packages for the scoreboard sketch.
+Matrix driver files are **vendored** in `waterpolo_scoreboard/`: `RGBmatrixPanel`, `Adafruit_GFX`, `gamma.h`, `gfxfont.h`, `glcdfont.c`, `Fonts/fonts.h`. The sketch calls Waveshare `Reginit()` **before** `matrix.begin()`. You do not need the Library Manager Adafruit GFX / RGB matrix Panel packages for the scoreboard sketch.
 
 Arduino IDE → **Tools → Manage Libraries**:
 
@@ -520,7 +520,7 @@ Grey ribbons with a **red stripe** mark pin 1 the same way (stripe = R1 / brown 
                                                   |  RF @ 433 MHz
                                                   v
                                                LoRa remotes
-                                               (lora_remote2)
+                                               (lora_remote)
 
   Buttons (each: Mega pin ----- button ----- GND)
     D2  period start/stop
@@ -648,7 +648,7 @@ Timeout (`TO`) / interval (`IN`) / half-time (`HT`):
 28              5:42
 ```
 
-- Home score white, away score blue (no H/A labels)  
+- Home score white, away score medium blue (no H/A labels)  
 - Labels (`P#` / `TO` / `IN` / `HT`) orange  
 - Main clock: white >1:00, orange ≤1:00 down to 0:29, red ≤0:28 (blinks at 0:00)  
 - Shot always red  
@@ -658,7 +658,7 @@ Timeout (`TO`) / interval (`IN`) / half-time (`HT`):
 
 ## LoRa protocol (remote shot clocks)
 
-Compatible with `WaterPoloScoreBoard/BLE_small_sample/lora_remote2` and `scoreboard_commands.h`.
+Compatible with `lora_remote/lora_remote.ino` and `lora_remote/scoreboard_commands.h`. Wiring for one remote: [docs/lora_remote_build.md](docs/lora_remote_build.md).
 
 
 | Item           | Value                                                                |
@@ -728,26 +728,15 @@ If a colour never reaches ~5 V when named, that Mega pin ↔ ribbon wire is open
 
 ### RGB matrix (HUB75)
 
-Sketch folder: `test_waveshare/`
-
-Use this before the full scoreboard sketch to confirm the panel, ribbon, and Mega pins. It uses the same vendored Waveshare driver and `Reginit()` as the scoreboard.
+Use the scoreboard sketch (`waterpolo_scoreboard/waterpolo_scoreboard.ino`) to confirm the panel. At startup it fills the matrix red, then clears.
 
 > **Power first (required).** The panel must be powered from the **external 5 V ≥2.5 A** supply on the **VH4** connector, with **PSU GND** tied to **Mega GND**.  
 > Do **not** judge the display with only USB/Mega power. With no VH4 supply, the ribbon can still weakly light some LEDs (often a **red** strip on the left) by leaking current through the data pins — that is **parasitic power**, can stress the Mega, and is **not** a valid test result.
 
 1. Connect **VH4** to the external **5 V ≥2.5 A** PSU (**VCC** and **GND**); tie **PSU GND** to **Mega GND**
 2. Wire the HUB75 ribbon exactly as in [RGB matrix → Mega (HUB75)](#rgb-matrix--mega-hub75) (brown = pin 1 / R1 → **D24**, …)
-3. Open `test_waveshare/test_waveshare.ino`, select **Arduino Mega or Mega 2560**, upload
-4. Open Serial Monitor @ **115200**. The panel starts **red**. Type a command:
-
-| Key | What you should see |
-| --- | ------------------- |
-| `r` / `g` / `b` / `w` / `0` | Full **red** / **green** / **blue** / **white** / **off** |
-| `c` | Column walk (one red vertical line) |
-| `y` | Row walk (one red horizontal line) |
-| `q` | 16-column green sections |
-| `t` | Centre cross + corner pixels |
-| `h` | Help |
+3. Open `waterpolo_scoreboard/waterpolo_scoreboard.ino`, select **Arduino Mega or Mega 2560**, upload
+4. The panel should flash **red**, then show the scoreboard (home score, period, away score, clock, shot)
 
 **If a red strip shows with VH4 unplugged:** expected parasitic glow — connect proper VH4 power before debugging further.
 

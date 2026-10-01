@@ -3,10 +3,10 @@
  * Board: Arduino Mega 2560
  * Display: Waveshare RGB-Matrix-P3-64x32 (SKU 33840, HUB75)
  * Mirror: Freenove I2C IIC LCD 1602 (16x2) on Mega SDA/SCL
- * Remote shot clocks: LoRa TX via Serial1 (same protocol as lora_remote2)
+ * Remote shot clocks: LoRa TX via Serial1 (same protocol as lora_remote)
  *
  * Matrix driver: Waveshare RGBmatrixPanel + Adafruit_GFX vendored in this
- * folder (same files as test_waveshare/). Call Reginit() before matrix.begin().
+ * folder. Call Reginit() before matrix.begin().
  *
  * Libraries (Library Manager):
  *   - LiquidCrystal I2C (e.g. Frank de Brabander / Freenove zip)
@@ -883,8 +883,8 @@ const char *menuItemName() {
     case MENU_ITEM_INTERVAL:  return "INTERVAL";
     case MENU_ITEM_HALFTIME: return "HALFTIME";
     case MENU_ITEM_TIMEOUT:   return "TIMEOUT";
-    case MENU_ITEM_SHOT28:    return "SHOT 28";
-    case MENU_ITEM_SHOT18:    return "SHOT 18";
+    case MENU_ITEM_SHOT28:    return "SHOT LONG";
+    case MENU_ITEM_SHOT18:    return "SHOT SHORT";
     default:                  return "CLOCK";
   }
 }
@@ -973,7 +973,7 @@ void setup() {
   delay(500);
   matrix.setTextWrap(false);
   COL_HOME  = matrix.Color333(MATRIX_BRIGHT, MATRIX_BRIGHT, MATRIX_BRIGHT);  // white
-  COL_AWAY  = matrix.Color333(0, 0, MATRIX_BRIGHT);                          // blue
+  COL_AWAY  = matrix.Color333(1, 1, MATRIX_BRIGHT);                          // medium blue
   COL_CLOCK = matrix.Color333(MATRIX_BRIGHT, MATRIX_BRIGHT, MATRIX_BRIGHT);
   COL_SHOT  = matrix.Color333(MATRIX_BRIGHT, MATRIX_BRIGHT, 0);
   COL_LABEL = matrix.Color333(MATRIX_BRIGHT, MATRIX_BRIGHT / 2, 0);           // orange
