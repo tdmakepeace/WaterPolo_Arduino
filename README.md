@@ -695,37 +695,6 @@ Remotes must use the **same** `LORA_DEFAULT_CHANNEL` as this master.
 
 ## Quick hardware test
 
-### D2 + LCD only
-
-Sketch folder: `test_d2_lcd/`
-
-1. Wire Freenove LCD (**GND/VCC/SDA/SCL** → **GND/5V/D20/D21**)
-2. Wire a button between **D2** and **GND**
-3. Open `test_d2_lcd/test_d2_lcd.ino`, select Mega 2560, upload
-4. LCD should show `D2 + I2C LCD OK` and toggle `BTN: PRESSED` / `BTN: released` when you press D2
-
-### HUB75 cables only (no matrix PSU)
-
-Sketch folder: `test_hub75_cables/`
-
-Use this while waiting for the **5 V ≥2.5 A** supply. It does **not** validate the panel picture — only Mega ↔ ribbon wiring.
-
-1. Power the Mega from **USB** only. Leave **VH4 disconnected**.
-2. Prefer unplugging the ribbon from the panel and probing the free IDC end (avoids parasitic LED glow). If the ribbon stays on the panel, ignore any faint red glow.
-3. Open `test_hub75_cables/test_hub75_cables.ino`, select Mega 2560, upload.
-4. Open Serial Monitor @ **9600**, line ending **Newline** (or Both NL & CR).
-5. Type a cable number **1–16** and press Enter to drive that net **HIGH** (held until you pick another). Type **0** for all LOW, **h** for the menu.
-6. Multimeter: **black** on **Mega GND**, **red** probe on the ribbon colour named in Serial.
-
-
-| Step                           | Expect                                                            |
-| ------------------------------ | ----------------------------------------------------------------- |
-| Signal nets (R1…OE)            | **~5 V** on that colour only; others ~0 V                         |
-| GND nets (Yellow #4, Grey #8, Blue #16) | Switch meter to **continuity/ohms** — beep / low ohms to Mega GND |
-
-
-If a colour never reaches ~5 V when named, that Mega pin ↔ ribbon wire is open or on the wrong pin. Fix those before the powered matrix test.
-
 ### RGB matrix (HUB75)
 
 Use the scoreboard sketch (`waterpolo_scoreboard/waterpolo_scoreboard.ino`) to confirm the panel. At startup it fills the matrix red, then clears.
