@@ -204,6 +204,28 @@ Notes:
 - A **goal** (**+ HOME** / **+ AWAY**) or **28s RESET** clears **both** exclusion clocks.
 - Press **START/STOP** to resume play (and continue the exclusion countdown).
 
+### PC-driven mode (WaterPoloScoreBoard over USB)
+
+The Mega can act as a display + LoRa relay for the PC app [WaterPoloScoreBoard](https://github.com/tdmakepeace/WaterPoloScoreBoard). Plug the Mega's USB into the PC and pick its COM port on the app's **Settings** page. Matrix and LoRa wiring stay the same.
+
+The app sends a newline-terminated frame at **9600** baud every **0.25 s**:
+
+```text
+HH,AA,PERIOD,CLOCK,SHOT,EX1,EX2      e.g. 03,01,P2,245,18,12,0
+```
+
+| Field | Meaning |
+|-------|---------|
+| `HH`, `AA` | Home / away score (0–99) |
+| `PERIOD` | `P1`–`P4`, or `TO` / `IN` / `HT` |
+| `CLOCK` | Period clock seconds; during `TO` / `IN` / `HT` the break countdown (shown in the large centre clock) |
+| `SHOT` | Shot clock seconds |
+| `EX1`, `EX2` | Exclusion clocks in seconds (`0` = hidden) |
+
+- The **first valid frame** switches the board to PC-driven mode until power-cycle / reset: buttons and the local clocks are ignored, and the matrix and LCD show exactly what the PC sends. During `TO` the period clock shown bottom-right is the last value sent in play.
+- The shot value is sent to the LoRa remotes when it changes and repeated every **0.5 s** while frames keep arriving (stops ~2 s after the PC goes quiet).
+- Other lines from the PC are forwarded to LoRa unchanged: `BUZZER` (also pulses the D12 relay ~0.5 s), `END` / `CHANGE` (relay ~1 s), `TEST`, `exit`. Bare shot integers are ignored in PC-driven mode (the frame owns the shot); before the first frame they are relayed as-is, so the Mega also works as a plain LoRa relay.
+
 ### Timing menu (PERIOD / INTERVAL / HALFTIME / TIMEOUT / SHOT 28 / SHOT 18 / CLOCK)
 
 Hold **18s RESET** and **28s RESET** for ~**3 s**. Clocks freeze while the menu is open. Values are kept until a **full reset** (not stored in EEPROM).
