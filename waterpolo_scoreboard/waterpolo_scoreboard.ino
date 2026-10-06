@@ -4,6 +4,11 @@
  * Display: Waveshare RGB-Matrix-P3-64x32 (SKU 33840, HUB75)
  * Mirror: Freenove I2C IIC LCD 1602 (16x2) on Mega SDA/SCL
  * Remote shot clocks: LoRa TX via Serial1 (same protocol as lora_remote)
+ * PC link (optional): WaterPoloScoreBoard streams display frames over USB
+ *   Serial @ 9600 every 0.25 s — "HH,AA,PERIOD,CLOCK,SHOT,EX1,EX2".
+ *   The first valid frame switches to PC-driven mode (buttons + local clocks
+ *   off until reset); the shot value is relayed to LoRa remotes, and keyword
+ *   lines (BUZZER, END, CHANGE, TEST, exit) are forwarded unchanged.
  *
  * Matrix driver: Waveshare RGBmatrixPanel + Adafruit_GFX vendored in this
  * folder. Call Reginit() before matrix.begin().
@@ -324,8 +329,30 @@ bool periodStarted = false;  // true after first START of current period
 bool inSettingsMenu = false;
 uint8_t menuItem = 0;          // 0 PERIOD · 1 INTERVAL · 2 HALFTIME · 3 TIMEOUT · 4 CLOCK
 
-bool inTimeout() { return timeoutLeft > 0; }
-bool inInterval() { return intervalLeft > 0; }
+// ----- PC link (USB Serial from WaterPoloScoreBoard) -----
+// Frame every 0.25 s: HH,AA,PERIOD,CLOCK,SHOT,EX1,EX2   e.g. "03,01,P2,245,18,12,0"
+// PERIOD = P1–P4, or TO / IN / HT with CLOCK = break countdown (seconds).
+// Other lines (BUZZER, END, CHANGE, TEST, exit) are relayed to LoRa.
+// First valid frame latches pcDriven until reset: buttons and local clocks stop.
+const uint8_t PC_BREAK_NONE = 0;
+const uint8_t PC_BREAK_TO   = 1;
+const uint8_t PC_BREAK_IN   = 2;
+const uint8_t PC_BREAK_HT   = 3;
+const uint8_t PC_FRAME_FIELDS = 7;
+const uint32_t PC_LINK_TIMEOUT_MS = 2000;  // stop LoRa shot resends when frames stop
+
+bool pcDriven = false;
+uint8_t pcBreak = PC_BREAK_NONE;
+uint32_t lastPcFrameMs = 0;
+char pcLine[48];
+uint8_t pcLineLen = 0;
+bool pcLineOverflow = false;
+char lastPcFrame[48] = "";
+
+bool inTimeout() { return pcDriven ? pcBreak == PC_BREAK_TO : timeoutLeft > 0; }
+bool inInterval() {
+  return pcDriven ? (pcBreak == PC_BREAK_IN || pcBreak == PC_BREAK_HT) : intervalLeft > 0;
+}
 bool inPlay() { return !inTimeout() && !inInterval() && !inSettingsMenu; }
 bool inMenu() { return inSettingsMenu; }
 
@@ -342,6 +369,9 @@ void exitSettingsMenu();
 void adjustMenuValue(int delta);
 void serviceMenuCombo(uint32_t now);
 void forwardToLoRa(const char *command);
+void pulseRelay(uint16_t durationMs);
+void pollPcSerial();
+void servicePcLoRaResend();
 void soundBuzzer();
 void endTimeoutOrInterval();
 void serviceReturnLongPress(uint32_t now);
@@ -789,6 +819,162 @@ void onShotExpired() {
   markDirty();
 }
 
+// ---------------------------------------------------------------------------
+// PC link (USB Serial)
+// ---------------------------------------------------------------------------
+
+bool parseNonNegInt(const char *s, int *out) {
+  if (*s == '\0') return false;
+  long v = 0;
+  for (; *s; s++) {
+    if (*s < '0' || *s > '9') return false;
+    v = v * 10 + (*s - '0');
+    if (v > 32767L) return false;
+  }
+  *out = (int)v;
+  return true;
+}
+
+uint8_t countChar(const char *s, char c) {
+  uint8_t n = 0;
+  for (; *s; s++) {
+    if (*s == c) n++;
+  }
+  return n;
+}
+
+// "P1".."P4" → PC_BREAK_NONE + period; "TO" / "IN" / "HT" → break. False if unknown.
+bool parsePcPeriod(const char *s, uint8_t *brk, int *period) {
+  if (s[0] == 'P' && s[1] >= '1' && s[1] <= '0' + PERIOD_MAX && s[2] == '\0') {
+    *brk = PC_BREAK_NONE;
+    *period = s[1] - '0';
+    return true;
+  }
+  if (strcmp(s, "TO") == 0) { *brk = PC_BREAK_TO; return true; }
+  if (strcmp(s, "IN") == 0) { *brk = PC_BREAK_IN; return true; }
+  if (strcmp(s, "HT") == 0) { *brk = PC_BREAK_HT; return true; }
+  return false;
+}
+
+void enterPcDrivenMode() {
+  pcDriven = true;
+  stopAllClocks();
+  inSettingsMenu = false;
+  timeoutLeft = 0;
+  intervalLeft = 0;
+  adjustPinDown = 0;
+  pendingShot18 = false;
+  pendingShot28 = false;
+}
+
+// Applies a 7-field frame in place (splits on commas). Returns false and leaves state untouched if invalid.
+bool applyPcFrame(char *line) {
+  char *fields[PC_FRAME_FIELDS];
+  uint8_t n = 0;
+  fields[n++] = line;
+  for (char *p = line; *p; p++) {
+    if (*p != ',') continue;
+    if (n >= PC_FRAME_FIELDS) return false;
+    *p = '\0';
+    fields[n++] = p + 1;
+  }
+  if (n != PC_FRAME_FIELDS) return false;
+
+  int home, away, clock, shot, ex1, ex2;
+  int period = periodNum;
+  uint8_t brk;
+  if (!parseNonNegInt(fields[0], &home) || !parseNonNegInt(fields[1], &away) ||
+      !parsePcPeriod(fields[2], &brk, &period) || !parseNonNegInt(fields[3], &clock) ||
+      !parseNonNegInt(fields[4], &shot) || !parseNonNegInt(fields[5], &ex1) ||
+      !parseNonNegInt(fields[6], &ex2)) {
+    return false;
+  }
+
+  if (!pcDriven) enterPcDrivenMode();
+  homeScore = constrain(home, 0, 99);
+  awayScore = constrain(away, 0, 99);
+  pcBreak = brk;
+  intervalIsHalfTime = (brk == PC_BREAK_HT);
+  // Break frames carry the break clock; the period clock stays frozen at its last play value.
+  if (brk == PC_BREAK_NONE) {
+    periodNum = period;
+    secondsLeft = clock;
+  } else if (brk == PC_BREAK_TO) {
+    timeoutLeft = clock;
+  } else {
+    intervalLeft = clock;
+  }
+  shotLeft = constrain(shot, 0, 99);
+  excl1Left = constrain(ex1, 0, 99);
+  excl2Left = constrain(ex2, 0, 99);
+  sendShotToLoRa(shotLeft, false);
+  markDirty();
+  return true;
+}
+
+void handlePcLine(char *line) {
+  if (countChar(line, ',') == PC_FRAME_FIELDS - 1) {
+    // Repeated identical frames only refresh the link timer (no LCD/matrix redraw).
+    if (strcmp(line, lastPcFrame) == 0) {
+      lastPcFrameMs = millis();
+      return;
+    }
+    char frame[sizeof(lastPcFrame)];
+    strncpy(frame, line, sizeof(frame) - 1);
+    frame[sizeof(frame) - 1] = '\0';
+    if (applyPcFrame(line)) {
+      strcpy(lastPcFrame, frame);
+      lastPcFrameMs = millis();
+    }
+    return;
+  }
+
+  int shot;
+  if (parseNonNegInt(line, &shot)) {
+    // PC mode: the frame owns the shot value (avoids ±1 flicker from mirrored integers).
+    if (!pcDriven) forwardToLoRa(line);
+    return;
+  }
+
+  if (strcmp(line, "BUZZER") == 0) {
+    pulseRelay(RELAY_SHOT_MS);
+  } else if (strcmp(line, "END") == 0 || strcmp(line, "CHANGE") == 0) {
+    pulseRelay(RELAY_PERIOD_MS);
+  }
+  forwardToLoRa(line);
+  ackCommand();
+}
+
+void pollPcSerial() {
+  while (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      if (!pcLineOverflow && pcLineLen > 0) {
+        pcLine[pcLineLen] = '\0';
+        handlePcLine(pcLine);
+      }
+      pcLineLen = 0;
+      pcLineOverflow = false;
+      continue;
+    }
+    if ((size_t)pcLineLen + 1 < sizeof(pcLine)) {
+      pcLine[pcLineLen++] = c;
+    } else {
+      pcLineOverflow = true;
+    }
+  }
+}
+
+// Remotes only show the last integer, so repeat it in case a LoRa packet was lost.
+void servicePcLoRaResend() {
+  if (!pcDriven) return;
+  uint32_t now = millis();
+  if (now - lastPcFrameMs >= PC_LINK_TIMEOUT_MS) return;
+  if (now - lastLoRaResendMs < LORA_RESEND_MS) return;
+  sendShotToLoRa(shotLeft, true);
+}
+
 void startTimeout() {
   stopAllClocks();
   intervalLeft = 0;
@@ -1018,14 +1204,17 @@ void setup() {
 
 void loop() {
   pollLoRaModuleEcho();
+  pollPcSerial();
   pollButtons();
   updateClocks();
   serviceRelay();
   serviceLcdAck();
   pollButtons();
 
-  if (inPlay() && clockRunning && shotClockEnabled() &&
-      (millis() - lastLoRaResendMs >= LORA_RESEND_MS)) {
+  if (pcDriven) {
+    servicePcLoRaResend();
+  } else if (inPlay() && clockRunning && shotClockEnabled() &&
+             (millis() - lastLoRaResendMs >= LORA_RESEND_MS)) {
     sendShotToLoRa(shotLeft, true);
   }
 
@@ -1050,6 +1239,7 @@ void loop() {
 // ---------------------------------------------------------------------------
 
 void pollButtons() {
+  if (pcDriven) return;
   uint32_t now = millis();
 
   for (uint8_t i = 0; i < BTN_COUNT; i++) {
@@ -1353,7 +1543,7 @@ void onButtonRelease(uint8_t pin, uint32_t now) {
 
 void updateClocks() {
   uint32_t now = millis();
-  if (inSettingsMenu) {
+  if (inSettingsMenu || pcDriven) {
     lastTickMs = now;
     return;
   }
